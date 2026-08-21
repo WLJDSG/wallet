@@ -3,66 +3,110 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.zbkj</groupId>
-    <artifactId>pay-channel-sdk</artifactId>
+    <groupId>com.wallet</groupId>
+    <artifactId>wallet</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
-    <name>pay-channel-sdk</name>
-    <description>多渠道支付编排 SDK：渠道×动作注册表、支付/退款状态机、幂等编排与支付日志钩子。
-        纯 Java 内核，不依赖 Spring/Servlet/第三方支付 SDK；持久化、分布式锁、事件与渠道实现通过 SPI 由宿主提供。
-        提炼自 BIZ-CRMEB-JAVA 的 crmeb-pay-service 模块。</description>
+    <name>wallet</name>
+    <description>钱包工程：用户资产（余额/积分/优惠券/支付密码）+ 三方支付内核 + 拆分支付编排。
+        由 pay-channel-sdk 扩展而来，同一支付单的所有状态变更共用一把分布式锁。</description>
+
+    <modules>
+        <module>wallet-common</module>
+        <module>wallet-channel</module>
+        <module>wallet-asset</module>
+        <module>wallet-pay</module>
+        <module>wallet-app</module>
+    </modules>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-boot.version>4.0.8</spring-boot.version>
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <redisson.version>4.7.0</redisson.version>
+        <springdoc.version>3.1.0</springdoc.version>
     </properties>
 
-    <!-- 依赖全部显式声明版本（与 CRMEB 宿主 Spring Boot 2.3.12 BOM 对齐），保证脱离任何父工程可独立构建 -->
-    <dependencies>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.30</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.11.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.30</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.1</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot 官方 BOM：slf4j / jackson3 / junit5 / mysql 驱动等版本都由它管 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
-    <!-- 插件版本显式固定（与 BIZ-CRMEB-JAVA 主仓一致），避免依赖 Maven 默认的过老版本 -->
+            <!-- 内部模块 -->
+            <dependency>
+                <groupId>com.wallet</groupId>
+                <artifactId>wallet-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wallet</groupId>
+                <artifactId>wallet-channel</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wallet</groupId>
+                <artifactId>wallet-asset</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wallet</groupId>
+                <artifactId>wallet-pay</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- 三方组件（Boot BOM 没管的） -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <!-- 只用核心包不用 starter：Boot 4 适配自己手动装配 RedissonClient 更稳 -->
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.14.0</version>
+                    <configuration>
+                        <release>${java.version}</release>
+                        <encoding>UTF-8</encoding>
+                        <!-- Spring MVC 需要参数名做 @PathVariable/@RequestParam 解析 -->
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 </project>

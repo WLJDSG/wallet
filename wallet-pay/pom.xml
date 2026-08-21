@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wallet</groupId>
+        <artifactId>wallet</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>wallet-pay</artifactId>
+
+    <name>wallet-pay</name>
+    <description>支付编排：支付主单 + 分段（券/积分/余额/三方）拆分支付、同一支付单一把锁、
+        退款分摊、超时关单任务；实现 wallet-channel 的 spi，并提供 mock 渠道与 Antom 渠道。</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-channel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-asset</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+        <dependency>
+            <!-- 渠道调用日志序列化（Jackson 3，Boot BOM 管版本） -->
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Antom（支付宝国际）官方 SDK：真实渠道示范，未配置商户密钥时不启用 -->
+        <dependency>
+            <groupId>com.alipay.global.sdk</groupId>
+            <artifactId>global-open-sdk-java</artifactId>
+            <version>2.0.70</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
