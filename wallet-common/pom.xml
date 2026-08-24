@@ -26,6 +26,29 @@
             <artifactId>jackson-annotations</artifactId>
         </dependency>
 
+        <!-- ===== 以下为业务模块（asset/pay）共用的基础运行时依赖，统一在 common 声明，下游免重复 =====
+             （lombok 是 provided 作用域不具传递性，无法上提，各模块自行声明） -->
+        <dependency>
+            <!-- MP 核心：BaseMapper / LambdaWrapper / 注解（boot starter 只在 wallet-app 装配层） -->
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-core</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @Service/@Component/事件发布 -->
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @Transactional -->
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @ConfigurationProperties -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

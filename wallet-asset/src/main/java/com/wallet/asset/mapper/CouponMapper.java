@@ -1,13 +1,12 @@
 package com.wallet.asset.mapper;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.wallet.asset.entity.Coupon;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
 
 /**
- * 券模板 Mapper。领取量 CAS 自增。
+ * 券模板 Mapper。全部 default + LambdaWrapper 实现；领取量 CAS 自增。
  */
 @Mapper
 public interface CouponMapper extends BaseMapper<Coupon> {
@@ -17,7 +16,12 @@ public interface CouponMapper extends BaseMapper<Coupon> {
      *
      * @return 影响行数，0 = 已领完
      */
-    @Update("UPDATE coupon SET taken_count = taken_count + 1 "
-        + "WHERE id = #{couponId} AND status = 1 AND (total_count = 0 OR taken_count < total_count)")
-    int increaseTaken(@Param("couponId") Long couponId);
+    default int increaseTaken(Long couponId) {
+        return update(new LambdaUpdateWrapper<Coupon>()
+            .setSql("taken_count = taken_count + 1")
+            .eq(Coupon::getId, couponId)
+            .eq(Coupon::getStatus, 1)
+            .and(w -> w.eq(Coupon::getTotalCount, 0)
+                .or().apply("taken_count < total_count")));
+    }
 }

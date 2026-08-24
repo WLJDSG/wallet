@@ -20,26 +20,7 @@
             <groupId>com.wallet</groupId>
             <artifactId>wallet-common</artifactId>
         </dependency>
-        <dependency>
-            <!-- 库模块只依赖 MP 核心（BaseMapper/Wrapper/注解），boot starter 只在 wallet-app -->
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-core</artifactId>
-        </dependency>
-        <dependency>
-            <!-- @Service/@Component -->
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-        </dependency>
-        <dependency>
-            <!-- @Transactional -->
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-tx</artifactId>
-        </dependency>
-        <dependency>
-            <!-- @ConfigurationProperties -->
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot</artifactId>
-        </dependency>
+        <!-- mybatis-plus-core / spring-context / spring-tx / spring-boot 由 wallet-common 统一提供 -->
         <dependency>
             <!-- 支付密码票据/计数：RBucket/RAtomicLong -->
             <groupId>org.redisson</groupId>

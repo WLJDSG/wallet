@@ -1,18 +1,18 @@
 package com.wallet.pay.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.state.OrderState;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 支付主单 Mapper。状态推进全部条件更新（CAS）。
+ * 支付主单 Mapper。全部 default + LambdaWrapper 实现；
+ * 状态推进一律条件更新（CAS：WHERE 带原状态，影响行数=1 才算成功）。
  */
 @Mapper
 public interface PayOrderMapper extends BaseMapper<PayOrder> {
@@ -33,32 +33,52 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
     }
 
     /** 条件推进状态 */
-    @Update("UPDATE pay_order SET state = #{to}, update_time = NOW() "
-        + "WHERE order_no = #{orderNo} AND state = #{from}")
-    int changeState(@Param("orderNo") String orderNo, @Param("from") OrderState from, @Param("to") OrderState to);
+    default int changeState(String orderNo, OrderState from, OrderState to) {
+        return update(new LambdaUpdateWrapper<PayOrder>()
+            .set(PayOrder::getState, to)
+            .set(PayOrder::getUpdateTime, LocalDateTime.now())
+            .eq(PayOrder::getOrderNo, orderNo)
+            .eq(PayOrder::getState, from));
+    }
 
     /** 推进到支付成功并记录支付时间；可退金额 = 总额 - 券面额（券不折现，永远不可现金退） */
-    @Update("UPDATE pay_order SET state = #{to}, pay_time = #{now}, "
-        + "refundable_amount = total_amount - #{couponAmount}, update_time = NOW() "
-        + "WHERE order_no = #{orderNo} AND state = #{from}")
-    int markPaid(@Param("orderNo") String orderNo, @Param("from") OrderState from, @Param("to") OrderState to,
-        @Param("now") LocalDateTime now, @Param("couponAmount") long couponAmount);
+    default int markPaid(String orderNo, OrderState from, OrderState to, LocalDateTime now, long couponAmount) {
+        return update(new LambdaUpdateWrapper<PayOrder>()
+            .set(PayOrder::getState, to)
+            .set(PayOrder::getPayTime, now)
+            .setSql("refundable_amount = total_amount - {0}", couponAmount)
+            .set(PayOrder::getUpdateTime, LocalDateTime.now())
+            .eq(PayOrder::getOrderNo, orderNo)
+            .eq(PayOrder::getState, from));
+    }
 
     /** 关闭并记录关闭时间 */
-    @Update("UPDATE pay_order SET state = #{to}, close_time = #{now}, update_time = NOW() "
-        + "WHERE order_no = #{orderNo} AND state = #{from}")
-    int markClosed(@Param("orderNo") String orderNo, @Param("from") OrderState from, @Param("to") OrderState to,
-        @Param("now") LocalDateTime now);
+    default int markClosed(String orderNo, OrderState from, OrderState to, LocalDateTime now) {
+        return update(new LambdaUpdateWrapper<PayOrder>()
+            .set(PayOrder::getState, to)
+            .set(PayOrder::getCloseTime, now)
+            .set(PayOrder::getUpdateTime, LocalDateTime.now())
+            .eq(PayOrder::getOrderNo, orderNo)
+            .eq(PayOrder::getState, from));
+    }
 
     /** 推进到失败并记录原因 */
-    @Update("UPDATE pay_order SET state = #{to}, fail_reason = #{reason}, update_time = NOW() "
-        + "WHERE order_no = #{orderNo} AND state = #{from}")
-    int markFailed(@Param("orderNo") String orderNo, @Param("from") OrderState from, @Param("to") OrderState to,
-        @Param("reason") String reason);
+    default int markFailed(String orderNo, OrderState from, OrderState to, String reason) {
+        return update(new LambdaUpdateWrapper<PayOrder>()
+            .set(PayOrder::getState, to)
+            .set(PayOrder::getFailReason, reason)
+            .set(PayOrder::getUpdateTime, LocalDateTime.now())
+            .eq(PayOrder::getOrderNo, orderNo)
+            .eq(PayOrder::getState, from));
+    }
 
     /** 扣减可退金额（CAS：可退充足才成功） */
-    @Update("UPDATE pay_order SET refundable_amount = refundable_amount - #{amount}, "
-        + "refunded_amount = refunded_amount + #{amount}, update_time = NOW() "
-        + "WHERE order_no = #{orderNo} AND refundable_amount >= #{amount}")
-    int reduceRefundable(@Param("orderNo") String orderNo, @Param("amount") Long amount);
+    default int reduceRefundable(String orderNo, Long amount) {
+        return update(new LambdaUpdateWrapper<PayOrder>()
+            .setSql("refundable_amount = refundable_amount - {0}", amount)
+            .setSql("refunded_amount = refunded_amount + {0}", amount)
+            .set(PayOrder::getUpdateTime, LocalDateTime.now())
+            .eq(PayOrder::getOrderNo, orderNo)
+            .ge(PayOrder::getRefundableAmount, amount));
+    }
 }

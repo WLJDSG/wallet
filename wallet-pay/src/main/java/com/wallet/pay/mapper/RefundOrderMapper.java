@@ -1,17 +1,17 @@
 package com.wallet.pay.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.wallet.pay.entity.RefundOrder;
 import com.wallet.pay.state.RefundOrderState;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
 
 import java.time.LocalDateTime;
 
 /**
- * 退款主单 Mapper。
+ * 退款主单 Mapper。全部 default + LambdaWrapper 实现；
+ * 状态推进一律条件更新（CAS：WHERE 带原状态，影响行数=1 才算成功）。
  */
 @Mapper
 public interface RefundOrderMapper extends BaseMapper<RefundOrder> {
@@ -23,21 +23,37 @@ public interface RefundOrderMapper extends BaseMapper<RefundOrder> {
     }
 
     /** 条件推进状态 */
-    @Update("UPDATE refund_order SET state = #{to}, update_time = NOW() "
-        + "WHERE refund_no = #{refundNo} AND state = #{from}")
-    int changeState(@Param("refundNo") String refundNo, @Param("from") RefundOrderState from, @Param("to") RefundOrderState to);
+    default int changeState(String refundNo, RefundOrderState from, RefundOrderState to) {
+        return update(new LambdaUpdateWrapper<RefundOrder>()
+            .set(RefundOrder::getState, to)
+            .set(RefundOrder::getUpdateTime, LocalDateTime.now())
+            .eq(RefundOrder::getRefundNo, refundNo)
+            .eq(RefundOrder::getState, from));
+    }
 
     /** 推进到成功并记录完成时间 */
-    @Update("UPDATE refund_order SET state = #{to}, finish_time = #{now}, update_time = NOW() "
-        + "WHERE refund_no = #{refundNo} AND state = #{from}")
-    int markSuccess(@Param("refundNo") String refundNo, @Param("from") RefundOrderState from, @Param("to") RefundOrderState to,
-        @Param("now") LocalDateTime now);
+    default int markSuccess(String refundNo, RefundOrderState from, RefundOrderState to, LocalDateTime now) {
+        return update(new LambdaUpdateWrapper<RefundOrder>()
+            .set(RefundOrder::getState, to)
+            .set(RefundOrder::getFinishTime, now)
+            .set(RefundOrder::getUpdateTime, LocalDateTime.now())
+            .eq(RefundOrder::getRefundNo, refundNo)
+            .eq(RefundOrder::getState, from));
+    }
 
-    @Update("UPDATE refund_order SET refund_point = #{point}, update_time = NOW() "
-        + "WHERE refund_no = #{refundNo}")
-    int updateRefundPoint(@Param("refundNo") String refundNo, @Param("point") Long point);
+    /** 更新退还积分数 */
+    default int updateRefundPoint(String refundNo, Long point) {
+        return update(new LambdaUpdateWrapper<RefundOrder>()
+            .set(RefundOrder::getRefundPoint, point)
+            .set(RefundOrder::getUpdateTime, LocalDateTime.now())
+            .eq(RefundOrder::getRefundNo, refundNo));
+    }
 
-    @Update("UPDATE refund_order SET coupon_back = #{couponBack}, update_time = NOW() "
-        + "WHERE refund_no = #{refundNo}")
-    int updateCouponBack(@Param("refundNo") String refundNo, @Param("couponBack") int couponBack);
+    /** 更新是否返还券标记 */
+    default int updateCouponBack(String refundNo, int couponBack) {
+        return update(new LambdaUpdateWrapper<RefundOrder>()
+            .set(RefundOrder::getCouponBack, couponBack)
+            .set(RefundOrder::getUpdateTime, LocalDateTime.now())
+            .eq(RefundOrder::getRefundNo, refundNo));
+    }
 }

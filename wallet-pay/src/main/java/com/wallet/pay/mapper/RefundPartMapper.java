@@ -1,17 +1,18 @@
 package com.wallet.pay.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.wallet.channel.enums.RefundState;
 import com.wallet.pay.entity.RefundPart;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 退款分段 Mapper。
+ * 退款分段 Mapper。全部 default + LambdaWrapper 实现；
+ * 状态推进一律条件更新（CAS：WHERE 带原状态，影响行数=1 才算成功）。
  */
 @Mapper
 public interface RefundPartMapper extends BaseMapper<RefundPart> {
@@ -29,8 +30,11 @@ public interface RefundPartMapper extends BaseMapper<RefundPart> {
     }
 
     /** 条件推进状态 */
-    @Update("UPDATE refund_part SET state = #{to}, update_time = NOW() "
-        + "WHERE refund_part_no = #{refundPartNo} AND state = #{from}")
-    int changeState(@Param("refundPartNo") String refundPartNo, @Param("from") RefundState from,
-        @Param("to") RefundState to);
+    default int changeState(String refundPartNo, RefundState from, RefundState to) {
+        return update(new LambdaUpdateWrapper<RefundPart>()
+            .set(RefundPart::getState, to)
+            .set(RefundPart::getUpdateTime, LocalDateTime.now())
+            .eq(RefundPart::getRefundPartNo, refundPartNo)
+            .eq(RefundPart::getState, from));
+    }
 }
