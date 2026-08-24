@@ -17,6 +17,7 @@ import com.wallet.channel.model.QueryResult;
 import com.wallet.channel.model.RefundResult;
 import com.wallet.channel.model.TradeInfo;
 import com.wallet.pay.config.MockProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,7 +25,11 @@ import org.springframework.stereotype.Component;
  * 用于在无真实商户配置时验证编排、锁、状态机全链路。
  */
 @Component
+@ConditionalOnProperty(prefix = "wallet.mock", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MockChannel implements PayAction, QueryAction, RefundAction, CancelAction, CallbackAction {
+
+    /** 渠道编码（PayService 判断是否安排 mock 自动回调时引用） */
+    public static final String CHANNEL_CODE = "MOCK";
 
     private final MockStore store;
     private final MockProperties props;
@@ -36,7 +41,7 @@ public class MockChannel implements PayAction, QueryAction, RefundAction, Cancel
 
     @Override
     public String code() {
-        return "MOCK";
+        return CHANNEL_CODE;
     }
 
     @Override

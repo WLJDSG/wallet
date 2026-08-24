@@ -1,6 +1,7 @@
 package com.wallet.pay.service;
 
 import com.wallet.pay.entity.PayPart;
+import com.wallet.pay.enums.PayType;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -34,7 +35,7 @@ public final class RefundSplitter {
             if (remaining == 0) {
                 break;
             }
-            if ("COUPON".equals(part.getPayType())) {
+            if (part.getPayType() == PayType.COUPON) {
                 continue; // 券不折现、不参与退款分摊
             }
             long available = part.getAmount() - part.getRefundedAmount();
@@ -56,10 +57,10 @@ public final class RefundSplitter {
     /** 分摊优先级：CHANNEL 优先，其次 MONEY，再 POINT（券不参与分摊，只用于排序兜底） */
     private static int priority(PayPart part) {
         return switch (part.getPayType()) {
-            case "CHANNEL" -> 0;
-            case "MONEY" -> 1;
-            case "POINT" -> 2;
-            default -> 9;
+            case CHANNEL -> 0;
+            case MONEY -> 1;
+            case POINT -> 2;
+            case COUPON -> 9;
         };
     }
 }

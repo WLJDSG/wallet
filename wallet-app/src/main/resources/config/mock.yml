@@ -1,0 +1,11 @@
+# Mock 渠道配置：仅联调用，与真实业务参数隔离。
+# 生产置 enabled=false（MockChannel 不注册、回调入口失效），或干脆从 import 清单移除本文件后
+# 在 application-prod.yml 里置 wallet.mock.enabled=false。
+wallet:
+  mock:
+    enabled: true             # mock 渠道总开关
+    delay-ms: 100             # 渠道模拟网络延迟
+    fail-rate: 0.0            # 下单失败概率（0~1），联调失败路径可临时调高
+    notify-seconds: 5         # 下单后 N 秒自动回调；0=手工触发回调接口
+    refund-fail: false        # 退款强制失败开关
+    secret: mock-secret       # mock 回调验签 token

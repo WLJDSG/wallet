@@ -1,13 +1,14 @@
 package com.wallet.app.controller;
 
+import com.wallet.app.model.CreateOrderReq;
 import com.wallet.app.model.SubmitReq;
 import com.wallet.common.result.ApiResult;
-import com.wallet.pay.model.CreateOrderCmd;
 import com.wallet.pay.model.CreateOrderResult;
 import com.wallet.pay.model.OrderDetail;
 import com.wallet.pay.model.SubmitResult;
 import com.wallet.pay.service.PayService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,12 +35,13 @@ public class PayController {
 
     @PostMapping("/create")
     public ApiResult<CreateOrderResult> create(@RequestHeader("X-Uid") Long userId,
-        @RequestBody CreateOrderCmd cmd) {
-        return ApiResult.ok(payService.create(userId, cmd));
+        @Valid @RequestBody CreateOrderReq req) {
+        return ApiResult.ok(payService.create(userId, req.toCmd()));
     }
 
     @PostMapping("/submit")
-    public ApiResult<SubmitResult> submit(@RequestHeader("X-Uid") Long userId, @RequestBody SubmitReq req) {
+    public ApiResult<SubmitResult> submit(@RequestHeader("X-Uid") Long userId,
+        @Valid @RequestBody SubmitReq req) {
         return ApiResult.ok(payService.submit(userId, req.orderNo(), req.ticket()));
     }
 

@@ -21,8 +21,29 @@
             <artifactId>wallet-common</artifactId>
         </dependency>
         <dependency>
+            <!-- 库模块只依赖 MP 核心（BaseMapper/Wrapper/注解），boot starter 只在 wallet-app -->
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+            <artifactId>mybatis-plus-core</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @Service/@Component -->
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @Transactional -->
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @ConfigurationProperties -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <!-- 支付密码票据/计数：RBucket/RAtomicLong -->
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
         </dependency>
         <dependency>
             <!-- 只为 BCrypt，不引入完整 Spring Security -->
@@ -31,14 +52,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- H2：内存库，用于验证 CAS 条件更新 SQL（MySQL 兼容模式） -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

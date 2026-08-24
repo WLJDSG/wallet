@@ -1,5 +1,7 @@
 package com.wallet.pay.entity;
 
+import com.wallet.pay.enums.PayType;
+import com.wallet.channel.enums.RefundState;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -18,11 +20,11 @@ public class RefundPart {
     private String refundPartNo;
     private String refundNo;
     private String partNo;
-    private String payType;
+    private PayType payType;
     private Long amount;
     private Long pointCount;
     private String channelRefundNo;
-    private String state;
+    private RefundState state;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -58,11 +60,11 @@ public class RefundPart {
         this.partNo = partNo;
     }
 
-    public String getPayType() {
+    public PayType getPayType() {
         return payType;
     }
 
-    public void setPayType(String payType) {
+    public void setPayType(PayType payType) {
         this.payType = payType;
     }
 
@@ -90,11 +92,11 @@ public class RefundPart {
         this.channelRefundNo = channelRefundNo;
     }
 
-    public String getState() {
+    public RefundState getState() {
         return state;
     }
 
-    public void setState(String state) {
+    public void setState(RefundState state) {
         this.state = state;
     }
 

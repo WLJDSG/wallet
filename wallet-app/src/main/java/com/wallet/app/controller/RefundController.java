@@ -5,6 +5,7 @@ import com.wallet.common.result.ApiResult;
 import com.wallet.pay.model.RefundCreateResult;
 import com.wallet.pay.model.RefundDetail;
 import com.wallet.pay.service.RefundService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,7 +29,7 @@ public class RefundController {
 
     @PostMapping("/create")
     public ApiResult<RefundCreateResult> create(@RequestHeader("X-Uid") Long userId,
-        @RequestBody RefundReq req) {
+        @Valid @RequestBody RefundReq req) {
         return ApiResult.ok(refundService.create(userId, req.orderNo(), req.amount(), req.reason()));
     }
 

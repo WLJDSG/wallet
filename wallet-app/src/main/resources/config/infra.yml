@@ -1,0 +1,44 @@
+# 基础能力配置：数据源、Redis、ORM、分布式锁、定时任务、Web 层格式、接口文档。
+# 改这个文件 = 动基础设施，评审时多加小心；环境差异在 application-{env}.yml 覆盖。
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/wallet?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ''
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  mvc:
+    format:            # 查询串/表单参数的时间格式（JSON 出入参在 JacksonConfig，两处保持一致）
+      date: yyyy-MM-dd
+      date-time: yyyy-MM-dd HH:mm:ss
+      time: HH:mm:ss
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+# @Lock4j 分布式锁：最终 key 形如 wallet:lock:order#P123，同一支付单一把锁
+# 缺省语义：等锁 3s 快速失败（acquire-timeout=3000）、Redisson 看门狗续期、可重入
+lock4j:
+  lock-key-prefix: wallet:lock
+
+# XXL-Job 分布式定时任务（超时关单等）。本地无 xxl-job-admin 时保持 false，任务不触发；
+# 部署调度中心后置 true，并在后台创建执行器（appname=wallet-executor）与任务 closeExpiredOrders
+xxl:
+  job:
+    enabled: false
+    admin-addresses: http://127.0.0.1:8081/xxl-job-admin
+    access-token: default_token
+    appname: wallet-executor
+    port: 9999
+    log-path: logs/xxl-job
+    log-retention-days: 30
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

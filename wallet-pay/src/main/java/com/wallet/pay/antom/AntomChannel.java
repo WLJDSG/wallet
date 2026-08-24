@@ -31,12 +31,11 @@ import com.wallet.channel.model.QueryResult;
 import com.wallet.channel.model.RefundResult;
 import com.wallet.channel.model.TradeInfo;
 import com.wallet.pay.config.AntomProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -57,11 +56,10 @@ import java.time.format.DateTimeFormatter;
  *
  * <p>需在 application.yml 配置 {@code wallet.antom.enabled=true} 及商户密钥，否则本渠道不注册。</p>
  */
+@Slf4j
 @Component
 @ConditionalOnProperty(prefix = "wallet.antom", name = "enabled", havingValue = "true")
 public class AntomChannel implements PayAction, QueryAction, RefundAction, CancelAction, CallbackAction {
-
-    private static final Logger log = LoggerFactory.getLogger(AntomChannel.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final DateTimeFormatter ISO_8601 =

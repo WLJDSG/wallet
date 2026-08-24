@@ -28,11 +28,11 @@ public class RefundStoreImpl implements RefundStore {
         if (part == null) {
             throw new ChannelException(PayError.ORDER_DOES_NOT_EXIST, "refundPartNo=" + refundOrderNo);
         }
-        return new RefundInfo(refundOrderNo, outTradeNo, RefundState.valueOf(part.getState()), amount, currency);
+        return new RefundInfo(refundOrderNo, outTradeNo, part.getState(), amount, currency);
     }
 
     @Override
     public boolean changeState(String refundOrderNo, RefundState from, RefundState to) {
-        return refundPartMapper.changeState(refundOrderNo, from.name(), to.name()) == 1;
+        return refundPartMapper.changeState(refundOrderNo, from, to) == 1;
     }
 }

@@ -9,8 +9,9 @@ import com.wallet.asset.service.AccountService;
 import com.wallet.asset.service.CouponService;
 import com.wallet.asset.service.MoneyService;
 import com.wallet.asset.service.PointService;
-import com.wallet.common.id.IdMaker;
+import com.wallet.common.util.IdMaker;
 import com.wallet.common.result.ApiResult;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,20 +49,20 @@ public class AssetController {
 
     @PostMapping("/recharge")
     public ApiResult<Map<String, Long>> recharge(@RequestHeader("X-Uid") Long userId,
-        @RequestBody RechargeReq req) {
+        @Valid @RequestBody RechargeReq req) {
         long after = moneyService.recharge(userId, req.amount(), IdMaker.next("M"), "模拟充值");
         return ApiResult.ok(Map.of("money", after));
     }
 
     @PostMapping("/point/add")
     public ApiResult<Map<String, Long>> addPoint(@RequestHeader("X-Uid") Long userId,
-        @RequestBody PointAddReq req) {
+        @Valid @RequestBody PointAddReq req) {
         long after = pointService.add(userId, req.count(), IdMaker.next("J"), "模拟发放");
         return ApiResult.ok(Map.of("point", after));
     }
 
     @PostMapping("/coupon/take")
-    public ApiResult<UserCoupon> take(@RequestHeader("X-Uid") Long userId, @RequestBody CouponTakeReq req) {
+    public ApiResult<UserCoupon> take(@RequestHeader("X-Uid") Long userId, @Valid @RequestBody CouponTakeReq req) {
         return ApiResult.ok(couponService.take(userId, req.couponId()));
     }
 }

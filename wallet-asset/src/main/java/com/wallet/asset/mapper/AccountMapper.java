@@ -1,11 +1,11 @@
 package com.wallet.asset.mapper;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.wallet.asset.entity.Account;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
@@ -30,11 +30,19 @@ public interface AccountMapper extends BaseMapper<Account> {
     @Update("UPDATE wallet_account SET point = point + #{count} WHERE user_id = #{userId}")
     int increasePoint(@Param("userId") Long userId, @Param("count") Long count);
 
-    @Select("SELECT money FROM wallet_account WHERE user_id = #{userId}")
-    Long selectMoney(@Param("userId") Long userId);
+    default Long selectMoney(Long userId) {
+        Account account = selectOne(new LambdaQueryWrapper<Account>()
+            .select(Account::getMoney)
+            .eq(Account::getUserId, userId));
+        return account == null ? null : account.getMoney();
+    }
 
-    @Select("SELECT point FROM wallet_account WHERE user_id = #{userId}")
-    Long selectPoint(@Param("userId") Long userId);
+    default Long selectPoint(Long userId) {
+        Account account = selectOne(new LambdaQueryWrapper<Account>()
+            .select(Account::getPoint)
+            .eq(Account::getUserId, userId));
+        return account == null ? null : account.getPoint();
+    }
 
     /** 建表时用：给新用户初始化账户（幂等，已存在则忽略） */
     @Insert("INSERT IGNORE INTO wallet_account(user_id, money, point, status) VALUES(#{userId}, 0, 0, 1)")

@@ -34,8 +34,7 @@ import com.wallet.channel.spi.RefundStore;
 import com.wallet.channel.spi.TradeStore;
 import com.wallet.channel.state.PayStateMachine;
 import com.wallet.channel.state.RefundStateMachine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.Supplier;
 
@@ -53,9 +52,8 @@ import java.util.function.Supplier;
  *   <li>内核不开数据库事务，渠道 HTTP 调用不在任何事务内，每次落库都是独立的短写入。</li>
  * </ul>
  */
+@Slf4j
 public final class PayFlow {
-
-    private static final Logger log = LoggerFactory.getLogger(PayFlow.class);
 
     private final ChannelTable table;
     private final TradeStore tradeStore;

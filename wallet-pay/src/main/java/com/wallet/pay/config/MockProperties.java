@@ -8,6 +8,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "wallet.mock")
 public class MockProperties {
 
+    /** mock 渠道总开关：false 时 MockChannel 不注册（生产建议关闭或直接移除 config/mock.yml） */
+    private boolean enabled = true;
+
     /** 下单/查询延迟毫秒（模拟网络耗时，验证锁内耗时处理） */
     private long delayMs = 100;
 
@@ -22,6 +25,14 @@ public class MockProperties {
 
     /** mock 回调验签 token */
     private String secret = "mock-secret";
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public long getDelayMs() {
         return delayMs;

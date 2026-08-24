@@ -5,6 +5,7 @@ import com.wallet.app.model.PasswordVerifyReq;
 import com.wallet.app.model.VerifyResult;
 import com.wallet.asset.service.password.PasswordService;
 import com.wallet.common.result.ApiResult;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -25,14 +26,14 @@ public class PasswordController {
     }
 
     @PostMapping("/set")
-    public ApiResult<Void> set(@RequestHeader("X-Uid") Long userId, @RequestBody PasswordSetReq req) {
+    public ApiResult<Void> set(@RequestHeader("X-Uid") Long userId, @Valid @RequestBody PasswordSetReq req) {
         passwordService.set(userId, req.password(), req.oldPassword());
         return ApiResult.ok();
     }
 
     @PostMapping("/verify")
     public ApiResult<VerifyResult> verify(@RequestHeader("X-Uid") Long userId,
-        @RequestBody PasswordVerifyReq req) {
+        @Valid @RequestBody PasswordVerifyReq req) {
         String ticket = passwordService.verifyAndIssue(userId, req.password(), req.orderNo(), req.amount());
         return ApiResult.ok(new VerifyResult(ticket));
     }

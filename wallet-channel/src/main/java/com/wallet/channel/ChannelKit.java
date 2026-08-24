@@ -10,8 +10,7 @@ import com.wallet.channel.spi.FeeRule;
 import com.wallet.channel.spi.PayListener;
 import com.wallet.channel.spi.RefundStore;
 import com.wallet.channel.spi.TradeStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,9 +40,8 @@ import java.util.Set;
  * <p>Kit 无状态且线程安全，应用内建一个单例即可。
  * <b>注意：内核不加锁，调用 flow() 各方法前必须持有该支付单的分布式锁。</b></p>
  */
+@Slf4j
 public final class ChannelKit {
-
-    private static final Logger log = LoggerFactory.getLogger(ChannelKit.class);
 
     private final ChannelTable table;
     private final PayFlow flow;
@@ -132,13 +130,12 @@ public final class ChannelKit {
     }
 
     /** 缺省日志出口：仅打应用日志，生产环境建议实现落库版本 */
+    @Slf4j(topic = "wallet.channel.calllog")
     private static final class Slf4jCallLogWriter implements CallLogWriter {
-
-        private static final Logger callLog = LoggerFactory.getLogger("wallet.channel.calllog");
 
         @Override
         public void write(CallLog record) {
-            callLog.info("channel={}, action={}, orderNo={}, outTradeNo={}, cost={}ms, error={}, req={}, resp={}",
+            log.info("channel={}, action={}, orderNo={}, outTradeNo={}, cost={}ms, error={}, req={}, resp={}",
                 record.channelCode(), record.action(), record.orderNo(), record.outTradeNo(),
                 record.costMs(), record.error(), record.request(), record.response());
         }

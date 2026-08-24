@@ -21,5 +21,10 @@ public enum PartState {
     CLOSED,
 
     /** 支付未完成时的补偿返还（终态，区别于退款） */
-    ROLLBACK
+    ROLLBACK;
+
+    /** 是否终态（不可再推进） */
+    public boolean isTerminal() {
+        return this == SUCCESS || this == FAIL || this == CLOSED || this == ROLLBACK;
+    }
 }

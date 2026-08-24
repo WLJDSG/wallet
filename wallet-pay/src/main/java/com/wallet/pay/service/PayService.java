@@ -1,23 +1,26 @@
 package com.wallet.pay.service;
 
 import com.wallet.asset.service.CouponService;
-import com.wallet.asset.service.MoneyService;
-import com.wallet.asset.service.PointService;
 import com.wallet.asset.service.password.PasswordService;
 import com.wallet.channel.ChannelKit;
 import com.wallet.channel.enums.ActionType;
 import com.wallet.channel.enums.PayError;
+import com.baomidou.lock.annotation.Lock4j;
 import com.wallet.channel.error.ChannelException;
+import com.wallet.channel.model.CallbackRequest;
 import com.wallet.channel.model.PayRequest;
 import com.wallet.channel.model.PayResult;
 import com.wallet.channel.model.QueryRequest;
 import com.wallet.common.error.BizException;
-import com.wallet.common.id.IdMaker;
-import com.wallet.common.lock.LockService;
-import com.wallet.pay.config.PayConfig;
+import com.wallet.common.util.IdMaker;
+import com.wallet.pay.config.PayProperties;
+import com.wallet.pay.mock.MockChannel;
+import com.wallet.pay.mock.MockNotifyService;
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.entity.PayPart;
+import com.wallet.pay.enums.PayType;
 import com.wallet.pay.error.OrderError;
+import com.wallet.pay.event.OrderClosedEvent;
 import com.wallet.pay.mapper.PayOrderMapper;
 import com.wallet.pay.mapper.PayPartMapper;
 import com.wallet.pay.model.CreateOrderCmd;
@@ -25,8 +28,14 @@ import com.wallet.pay.model.CreateOrderResult;
 import com.wallet.pay.model.OrderDetail;
 import com.wallet.pay.model.PartItem;
 import com.wallet.pay.model.SubmitResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.wallet.pay.state.OrderEvent;
+import com.wallet.pay.state.OrderState;
+import com.wallet.pay.state.PartEvent;
+import com.wallet.pay.state.PartState;
+import com.wallet.pay.state.OrderStateMachine;
+import com.wallet.pay.state.PartStateMachine;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,46 +46,44 @@ import java.util.Map;
 /**
  * 支付编排服务。
  *
- * <p><b>同一把锁</b>：提交/回调/查询/取消/退款/关单全部经
- * {@link LockService#payOrderKey(String)} 加锁，同一支付单的所有状态变更串行执行。</p>
+ * <p><b>同一把锁</b>：提交/回调/查询/取消/退款/关单入口全部标注
+ * {@code @Lock4j(name = "order", keys = "#orderNo")}（实际 key 为
+ * {@code wallet:lock:order#orderNo}），同一支付单的所有状态变更串行执行。
+ * 锁语义：等锁 3 秒快速失败、Redisson 看门狗自动续期、同线程可重入。</p>
  *
  * <p>时序：创建（校验+落单）→ 提交（扣资产段在一个本地事务内，三方向发起在事务外）
  * → 回调/查询确认 → 全部成功推主单 SUCCESS；渠道下单失败或超时则补偿回滚资产段。</p>
  */
+@Slf4j
 @Service
 public class PayService {
 
-    private static final Logger log = LoggerFactory.getLogger(PayService.class);
-
-    public static final String TYPE_COUPON = "COUPON";
-    public static final String TYPE_POINT = "POINT";
-    public static final String TYPE_MONEY = "MONEY";
-    public static final String TYPE_CHANNEL = "CHANNEL";
-
     private final PayOrderMapper payOrderMapper;
     private final PayPartMapper payPartMapper;
-    private final MoneyService moneyService;
-    private final PointService pointService;
     private final CouponService couponService;
     private final PasswordService passwordService;
     private final ChannelKit channelKit;
-    private final LockService lockService;
-    private final NotifyService notifyService;
-    private final PayConfig config;
+    private final MockNotifyService mockNotifyService;
+    private final PayProperties config;
+    private final ApplicationEventPublisher events;
+    private final AssetPartService assetPartService;
 
-    public PayService(PayOrderMapper payOrderMapper, PayPartMapper payPartMapper, MoneyService moneyService,
-        PointService pointService, CouponService couponService, PasswordService passwordService,
-        ChannelKit channelKit, LockService lockService, NotifyService notifyService, PayConfig config) {
+    private final OrderFinisher orderFinisher;
+
+    public PayService(PayOrderMapper payOrderMapper, PayPartMapper payPartMapper,
+        CouponService couponService, PasswordService passwordService,
+        ChannelKit channelKit, MockNotifyService mockNotifyService, PayProperties config, ApplicationEventPublisher events,
+        AssetPartService assetPartService, OrderFinisher orderFinisher) {
         this.payOrderMapper = payOrderMapper;
         this.payPartMapper = payPartMapper;
-        this.moneyService = moneyService;
-        this.pointService = pointService;
         this.couponService = couponService;
         this.passwordService = passwordService;
         this.channelKit = channelKit;
-        this.lockService = lockService;
-        this.notifyService = notifyService;
+        this.mockNotifyService = mockNotifyService;
         this.config = config;
+        this.events = events;
+        this.assetPartService = assetPartService;
+        this.orderFinisher = orderFinisher;
     }
 
     /** 创建支付单：校验分段合法性，落主单 + 全部分段（INIT）。不持锁（orderNo 新生成，靠唯一索引防重）。 */
@@ -86,7 +93,7 @@ public class PayService {
         int channelCount = 0;
         for (PartItem item : cmd.parts()) {
             sum += item.amount();
-            if (TYPE_CHANNEL.equals(item.payType())) {
+            if (item.payType() == PayType.CHANNEL) {
                 channelCount++;
             }
             validatePart(userId, item, cmd.totalAmount());
@@ -106,7 +113,7 @@ public class PayService {
         order.setUserId(userId);
         order.setTotalAmount(cmd.totalAmount());
         order.setCurrency(cmd.currency());
-        order.setState("INIT");
+        order.setState(OrderState.INIT);
         order.setExpireTime(now.plusMinutes(config.getExpireMinutes()));
         order.setRefundableAmount(0L);
         order.setRefundedAmount(0L);
@@ -124,7 +131,7 @@ public class PayService {
             part.setPointCount(item.pointCount());
             part.setUserCouponId(item.userCouponId());
             part.setChannelCode(item.channelCode());
-            part.setState("INIT");
+            part.setState(PartState.INIT);
             part.setRefundedAmount(0L);
             part.setCreateTime(now);
             part.setUpdateTime(now);
@@ -135,7 +142,7 @@ public class PayService {
 
     private void validatePart(Long userId, PartItem item, long totalAmount) {
         switch (item.payType()) {
-            case TYPE_COUPON -> {
+            case COUPON -> {
                 if (item.userCouponId() == null) {
                     throw new BizException(OrderError.PART_INVALID, "券段缺少 userCouponId");
                 }
@@ -145,7 +152,7 @@ public class PayService {
                         "券段金额必须等于面额 " + userCoupon.getFaceAmount());
                 }
             }
-            case TYPE_POINT -> {
+            case POINT -> {
                 if (item.pointCount() == null || item.pointCount() <= 0) {
                     throw new BizException(OrderError.PART_INVALID, "积分段缺少 pointCount");
                 }
@@ -156,37 +163,36 @@ public class PayService {
                             + config.getPointsPerYuan() + " 积分/元折算）");
                 }
             }
-            case TYPE_MONEY -> {
+            case MONEY -> {
                 // 无需额外校验
             }
-            case TYPE_CHANNEL -> {
+            case CHANNEL -> {
                 if (item.channelCode() == null || item.channelCode().trim().isEmpty()) {
                     throw new BizException(OrderError.PART_INVALID, "三方段缺少 channelCode");
                 }
             }
-            default -> throw new BizException(OrderError.PART_INVALID, "未知分段类型 " + item.payType());
         }
     }
 
     /** 提交支付：持单锁，扣资产段（事务）+ 发起三方（事务外）。 */
+    @Lock4j(name = "order", keys = "#orderNo")
     public SubmitResult submit(Long userId, String orderNo, String ticket) {
-        return lockService.withLock(LockService.payOrderKey(orderNo),
-            () -> doSubmit(userId, orderNo, ticket));
+        return doSubmit(userId, orderNo, ticket);
     }
 
     private SubmitResult doSubmit(Long userId, String orderNo, String ticket) {
         PayOrder order = requireOwned(userId, orderNo);
-        String state = order.getState();
-        if ("SUCCESS".equals(state)) {
+        OrderState state = order.getState();
+        if (state == OrderState.SUCCESS) {
             return new SubmitResult("SUCCESS", null, "订单已支付");
         }
-        if ("CLOSED".equals(state) || "FAIL".equals(state)) {
+        if (state == OrderState.CLOSED || state == OrderState.FAIL) {
             throw new BizException(OrderError.ORDER_STATE_INVALID, "state=" + state);
         }
 
         List<PayPart> parts = payPartMapper.findByOrderNo(orderNo);
 
-        if ("INIT".equals(state)) {
+        if (state == OrderState.INIT) {
             // 含资产段的支付必须校验并消费支付密码授权票据
             if (hasAssetPart(parts)) {
                 if (ticket == null || ticket.trim().isEmpty()) {
@@ -195,26 +201,24 @@ public class PayService {
                 passwordService.consumeTicket(ticket, userId, orderNo, order.getTotalAmount());
             }
             // 主单 INIT→PAYING（CAS，防并发重复提交）
-            if (payOrderMapper.changeState(orderNo, "INIT", "PAYING") == 0) {
+            if (payOrderMapper.changeState(orderNo, OrderState.INIT, OrderState.PAYING) == 0) {
                 log.info("提交支付被并发处理, orderNo={}", orderNo);
                 return submitRetry(order, parts);
             }
             // 扣资产段：一个本地事务，任一失败整体回滚
             try {
-                deductAssetParts(userId, parts, orderNo);
+                assetPartService.deductAssetParts(userId, parts, orderNo);
             } catch (RuntimeException e) {
                 log.warn("资产扣减失败, orderNo={}, err={}", orderNo, e.getMessage());
-                payOrderMapper.markFailed(orderNo, "PAYING", "FAIL",
+                payOrderMapper.markFailed(orderNo, OrderState.PAYING, OrderState.FAIL,
                     "资产扣减失败: " + e.getMessage());
                 markPartsFailed(parts);
                 throw e;
             }
             PayPart channelPart = channelPartOf(parts);
             if (channelPart == null) {
-                // 纯资产支付：当场完成
-                payOrderMapper.markPaid(orderNo, "PAYING", "SUCCESS", LocalDateTime.now(),
-                    couponTotal(parts));
-                log.info("纯资产支付完成, orderNo={}", orderNo);
+                // 纯资产支付：当场完成（结单与事件发布统一走 OrderFinisher）
+                orderFinisher.finishIfAllSuccess(orderNo);
                 return new SubmitResult("SUCCESS", null, "支付成功");
             }
             return payChannel(userId, order, channelPart);
@@ -224,17 +228,17 @@ public class PayService {
 
     /** 主单已是 PAYING（重复提交）：返回已有渠道支付参数或当前状态 */
     private SubmitResult submitRetry(PayOrder order, List<PayPart> parts) {
-        if ("SUCCESS".equals(order.getState())) {
+        if (order.getState() == OrderState.SUCCESS) {
             return new SubmitResult("SUCCESS", null, "订单已支付");
         }
         PayPart channelPart = channelPartOf(parts);
-        if (channelPart != null && "PAYING".equals(channelPart.getState())) {
+        if (channelPart != null && channelPart.getState() == PartState.PAYING) {
             return new SubmitResult("PAYING", channelPart.getChannelPayload(), "支付已发起，等待结果");
         }
-        if ("FAIL".equals(order.getState())) {
+        if (order.getState() == OrderState.FAIL) {
             throw new BizException(OrderError.ORDER_STATE_INVALID, "订单支付失败");
         }
-        return new SubmitResult(order.getState(), null, "当前状态 " + order.getState());
+        return new SubmitResult(order.getState().name(), null, "当前状态 " + order.getState());
     }
 
     /** 发起三方支付（事务外调用内核），失败补偿回滚资产段 */
@@ -250,51 +254,52 @@ public class PayService {
         try {
             PayResult result = channelKit.flow().pay(request);
             payPartMapper.updatePayload(channelPart.getPartNo(), String.valueOf(result.channelPayload()));
-            notifyService.scheduleAutoNotify(order.getOrderNo(), channelPart.getPartNo());
+            if (MockChannel.CHANNEL_CODE.equals(channelPart.getChannelCode())) {
+                mockNotifyService.scheduleAutoNotify(order.getOrderNo(), channelPart.getPartNo());
+            }
             log.info("渠道支付已发起, orderNo={}, partNo={}, queryable={}", order.getOrderNo(),
                 channelPart.getPartNo(), result.queryable());
             return new SubmitResult("PAYING", result.channelPayload(), "支付已发起，等待结果");
         } catch (RuntimeException e) {
             log.warn("渠道下单失败，补偿回滚资产段, orderNo={}, err={}", order.getOrderNo(), e.getMessage());
-            rollbackAssetParts(order.getOrderNo(), order.getUserId());
-            payOrderMapper.markFailed(order.getOrderNo(), "PAYING", "FAIL", "渠道下单失败: " + e.getMessage());
+            assetPartService.rollbackAssetParts(order.getOrderNo(), order.getUserId());
+            payOrderMapper.markFailed(order.getOrderNo(), OrderState.PAYING, OrderState.FAIL, "渠道下单失败: " + e.getMessage());
             throw new BizException(OrderError.CHANNEL_PAY_FAILED, e.getMessage());
         }
     }
 
     /** 处理渠道异步回调（持单锁，内核不重复加锁） */
+    @Lock4j(name = "order", keys = "#orderNo")
     public String handleCallback(String channelCode, String orderNo, String partNo, String body,
         Map<String, String> headers, String httpMethod, String requestUri) {
-        return lockService.withLock(LockService.payOrderKey(orderNo), () -> {
-            com.wallet.channel.model.CallbackRequest request =
-                com.wallet.channel.model.CallbackRequest.builder()
-                    .channelCode(channelCode)
-                    .orderNo(orderNo)
-                    .outTradeNo(partNo)
-                    .httpMethod(httpMethod)
-                    .requestUri(requestUri)
-                    .headers(headers)
-                    .body(body)
-                    .build();
-            return channelKit.flow().callback(request);
-        });
+        CallbackRequest request = CallbackRequest.builder()
+            .channelCode(channelCode)
+            .orderNo(orderNo)
+            .outTradeNo(partNo)
+            .httpMethod(httpMethod)
+            .requestUri(requestUri)
+            .headers(headers)
+            .body(body)
+            .build();
+        return channelKit.flow().callback(request);
     }
 
     /** 主动向渠道查证（持单锁） */
+    @Lock4j(name = "order", keys = "#orderNo")
     public boolean query(Long userId, String orderNo) {
-        return lockService.withLock(LockService.payOrderKey(orderNo), () -> doQuery(userId, orderNo));
+        return doQuery(userId, orderNo);
     }
 
     private boolean doQuery(Long userId, String orderNo) {
         PayOrder order = requireOwned(userId, orderNo);
-        if ("SUCCESS".equals(order.getState())) {
+        if (order.getState() == OrderState.SUCCESS) {
             return true;
         }
         PayPart channelPart = channelPartOf(payPartMapper.findByOrderNo(orderNo));
         if (channelPart == null) {
             return true; // 无三方段
         }
-        if (!"INIT".equals(channelPart.getState()) && !"PAYING".equals(channelPart.getState())) {
+        if (channelPart.getState() != PartState.INIT && channelPart.getState() != PartState.PAYING) {
             return true; // 分段已终态
         }
         QueryRequest request = new QueryRequest(channelPart.getChannelCode(), orderNo,
@@ -303,18 +308,28 @@ public class PayService {
     }
 
     /** 取消支付（持单锁）：未支付→关渠道+补偿资产段+关单；渠道已支付→补单完成 */
+    @Lock4j(name = "order", keys = "#orderNo")
     public String cancel(Long userId, String orderNo) {
-        return lockService.withLock(LockService.payOrderKey(orderNo), () -> doCancel(userId, orderNo));
+        return doCancel(userId, orderNo);
+    }
+
+    /** 超时关单入口（持单锁，供 CloseTask 逐单调用）：锁内重读，仍是 INIT/PAYING 才处理 */
+    @Lock4j(name = "order", keys = "#orderNo")
+    public void closeExpired(String orderNo) {
+        PayOrder fresh = payOrderMapper.findByOrderNo(orderNo);
+        if (fresh != null && OrderStateMachine.INSTANCE.canTransition(fresh.getState(), OrderEvent.CLOSE)) {
+            closeOrFinish(fresh);
+        }
     }
 
     private String doCancel(Long userId, String orderNo) {
         PayOrder order = requireOwned(userId, orderNo);
-        String state = order.getState();
-        if ("SUCCESS".equals(state)) {
+        OrderState state = order.getState();
+        if (state == OrderState.SUCCESS) {
             throw new BizException(OrderError.ORDER_PAID, orderNo);
         }
-        if ("CLOSED".equals(state) || "FAIL".equals(state)) {
-            return state;
+        if (state == OrderState.CLOSED || state == OrderState.FAIL) {
+            return state.name();
         }
         closeOrFinish(order);
         return "CLOSED";
@@ -328,11 +343,11 @@ public class PayService {
         List<PayPart> parts = payPartMapper.findByOrderNo(orderNo);
         PayPart channelPart = channelPartOf(parts);
 
-        if (channelPart != null && !isTerminal(channelPart.getState())) {
+        if (channelPart != null && !channelPart.getState().isTerminal()) {
             // 查证渠道是否已支付（内核在已支付时会推进分段 SUCCESS 并触发监听）
             boolean channelPaid = queryChannelPaid(channelPart);
             if (channelPaid) {
-                finishIfAllSuccess(orderNo);
+                orderFinisher.finishIfAllSuccess(orderNo);
                 log.info("取消时发现渠道已支付，走补单完成, orderNo={}", orderNo);
                 return;
             }
@@ -342,23 +357,25 @@ public class PayService {
             } catch (ChannelException e) {
                 if (e.error() == PayError.ORDER_HAS_PAID) {
                     // 关闭时渠道侧已支付：补单完成
-                    payPartMapper.changeState(channelPart.getPartNo(), channelPart.getState(), "SUCCESS");
-                    finishIfAllSuccess(orderNo);
+                    payPartMapper.changeState(channelPart.getPartNo(), channelPart.getState(), PartState.SUCCESS);
+                    orderFinisher.finishIfAllSuccess(orderNo);
                     return;
                 }
                 log.warn("渠道关闭异常，继续本地关闭, orderNo={}, err={}", orderNo, e.getMessage());
-                payPartMapper.changeState(channelPart.getPartNo(), channelPart.getState(), "CLOSED");
+                payPartMapper.changeState(channelPart.getPartNo(), channelPart.getState(), PartState.CLOSED);
             }
         }
 
         // 资产段补偿返还 + 其余未终态分段关闭
-        rollbackAssetParts(orderNo, order.getUserId());
+        assetPartService.rollbackAssetParts(orderNo, order.getUserId());
         for (PayPart part : payPartMapper.findByOrderNo(orderNo)) {
-            if (!isTerminal(part.getState())) {
-                payPartMapper.changeState(part.getPartNo(), part.getState(), "CLOSED");
+            if (PartStateMachine.INSTANCE.canTransition(part.getState(), PartEvent.CLOSE)) {
+                payPartMapper.changeState(part.getPartNo(), part.getState(), PartState.CLOSED);
             }
         }
-        payOrderMapper.markClosed(orderNo, order.getState(), "CLOSED", LocalDateTime.now());
+        if (payOrderMapper.markClosed(orderNo, order.getState(), OrderState.CLOSED, LocalDateTime.now()) == 1) {
+            events.publishEvent(new OrderClosedEvent(orderNo, order.getUserId()));
+        }
     }
 
     /**
@@ -368,7 +385,7 @@ public class PayService {
      * 内核 query 在已支付时会顺手把分段推进 SUCCESS 并触发监听。
      */
     private boolean queryChannelPaid(PayPart channelPart) {
-        if (!"PAYING".equals(channelPart.getState())
+        if (channelPart.getState() != PartState.PAYING
             || !channelKit.supports(channelPart.getChannelCode(), ActionType.QUERY)) {
             return false;
         }
@@ -379,79 +396,6 @@ public class PayService {
         } catch (ChannelException e) {
             log.warn("关单查证渠道失败, partNo={}, err={}", channelPart.getPartNo(), e.getMessage());
             return false;
-        }
-    }
-
-    /** 全部分段 SUCCESS 时把主单推进 SUCCESS（供监听器与补单路径共用） */
-    public void finishIfAllSuccess(String orderNo) {
-        boolean allSuccess = true;
-        for (PayPart part : payPartMapper.findByOrderNo(orderNo)) {
-            if (!"SUCCESS".equals(part.getState())) {
-                allSuccess = false;
-                break;
-            }
-        }
-        if (allSuccess) {
-            payOrderMapper.markPaid(orderNo, "PAYING", "SUCCESS", LocalDateTime.now(),
-                couponTotal(payPartMapper.findByOrderNo(orderNo)));
-            log.info("订单支付完成, orderNo={}", orderNo);
-        }
-    }
-
-    /** 券面额合计（券段不折现，从可退金额中剔除） */
-    private long couponTotal(List<PayPart> parts) {
-        long total = 0;
-        for (PayPart part : parts) {
-            if ("COUPON".equals(part.getPayType())) {
-                total += part.getAmount();
-            }
-        }
-        return total;
-    }
-
-    /** 扣资产段：一个本地事务内按 券→积分→余额 顺序扣减，任一失败整体回滚 */
-    @Transactional
-    public void deductAssetParts(Long userId, List<PayPart> parts, String orderNo) {
-        LocalDateTime now = LocalDateTime.now();
-        for (PayPart part : parts) {
-            switch (part.getPayType()) {
-                case TYPE_COUPON -> {
-                    couponService.use(userId, part.getUserCouponId(), orderNo);
-                    payPartMapper.markAssetDone(part.getPartNo(), "INIT", "SUCCESS", now);
-                }
-                case TYPE_POINT -> {
-                    pointService.pay(userId, part.getPointCount(), part.getPartNo(), orderNo, "支付");
-                    payPartMapper.markAssetDone(part.getPartNo(), "INIT", "SUCCESS", now);
-                }
-                case TYPE_MONEY -> {
-                    moneyService.pay(userId, part.getAmount(), part.getPartNo(), orderNo, "支付");
-                    payPartMapper.markAssetDone(part.getPartNo(), "INIT", "SUCCESS", now);
-                }
-                default -> {
-                    // 三方段不在这里处理
-                }
-            }
-        }
-    }
-
-    /** 补偿回滚已扣资产段（SUCCESS→ROLLBACK + 逆向流水 + 还券） */
-    @Transactional
-    public void rollbackAssetParts(String orderNo, Long orderUserId) {
-        for (PayPart part : payPartMapper.findByOrderNo(orderNo)) {
-            if (!"SUCCESS".equals(part.getState())) {
-                continue;
-            }
-            switch (part.getPayType()) {
-                case TYPE_COUPON -> couponService.restore(orderUserId, part.getUserCouponId(), orderNo);
-                case TYPE_POINT -> pointService.rollback(orderUserId, part.getPointCount(),
-                    part.getPartNo(), orderNo, "支付未完成回滚");
-                case TYPE_MONEY -> moneyService.rollback(orderUserId, part.getAmount(),
-                    part.getPartNo(), orderNo, "支付未完成回滚");
-                default -> {
-                    // 三方段不回滚
-                }
-            }
-            payPartMapper.changeState(part.getPartNo(), "SUCCESS", "ROLLBACK");
         }
     }
 
@@ -474,20 +418,16 @@ public class PayService {
 
     private boolean hasAssetPart(List<PayPart> parts) {
         for (PayPart part : parts) {
-            if (isAsset(part.getPayType())) {
+            if (part.getPayType().isAsset()) {
                 return true;
             }
         }
         return false;
     }
 
-    private boolean isAsset(String payType) {
-        return TYPE_COUPON.equals(payType) || TYPE_POINT.equals(payType) || TYPE_MONEY.equals(payType);
-    }
-
     private PayPart channelPartOf(List<PayPart> parts) {
         for (PayPart part : parts) {
-            if (TYPE_CHANNEL.equals(part.getPayType())) {
+            if (part.getPayType() == PayType.CHANNEL) {
                 return part;
             }
         }
@@ -496,14 +436,9 @@ public class PayService {
 
     private void markPartsFailed(List<PayPart> parts) {
         for (PayPart part : parts) {
-            if ("INIT".equals(part.getState())) {
-                payPartMapper.changeState(part.getPartNo(), "INIT", "FAIL");
+            if (part.getState() == PartState.INIT) {
+                payPartMapper.changeState(part.getPartNo(), PartState.INIT, PartState.FAIL);
             }
         }
-    }
-
-    private boolean isTerminal(String state) {
-        return "SUCCESS".equals(state) || "FAIL".equals(state) || "CLOSED".equals(state)
-            || "ROLLBACK".equals(state);
     }
 }

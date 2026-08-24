@@ -4,7 +4,7 @@ import com.wallet.asset.config.PasswordProperties;
 import com.wallet.asset.entity.PayPassword;
 import com.wallet.asset.error.AssetError;
 import com.wallet.common.error.BizException;
-import com.wallet.common.id.IdMaker;
+import com.wallet.common.util.IdMaker;
 import org.redisson.api.RBucket;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RedissonClient;

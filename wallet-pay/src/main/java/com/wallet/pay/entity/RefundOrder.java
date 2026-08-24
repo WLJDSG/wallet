@@ -1,5 +1,6 @@
 package com.wallet.pay.entity;
 
+import com.wallet.pay.state.RefundOrderState;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -20,7 +21,7 @@ public class RefundOrder {
     private Long refundAmount;
     private Long refundPoint;
     private Integer couponBack;
-    private String state;
+    private RefundOrderState state;
     private String reason;
     private LocalDateTime finishTime;
     private LocalDateTime createTime;
@@ -82,11 +83,11 @@ public class RefundOrder {
         this.couponBack = couponBack;
     }
 
-    public String getState() {
+    public RefundOrderState getState() {
         return state;
     }
 
-    public void setState(String state) {
+    public void setState(RefundOrderState state) {
         this.state = state;
     }
 

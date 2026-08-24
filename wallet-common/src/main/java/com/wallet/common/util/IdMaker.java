@@ -1,4 +1,4 @@
-package com.wallet.common.id;
+package com.wallet.common.util;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

@@ -4,14 +4,14 @@ import com.wallet.channel.model.CallLog;
 import com.wallet.channel.spi.CallLogWriter;
 import com.wallet.pay.entity.ChannelLog;
 import com.wallet.pay.mapper.ChannelLogMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 
 /**
  * 渠道调用日志适配：落 channel_log 表。
- * 序列化用宿主 Jackson 3（内核不依赖 JSON 库）。
+ * 序列化用宿主 Jackson 2（内核不依赖 JSON 库）。
  */
 @Component
 public class CallLogWriterImpl implements CallLogWriter {

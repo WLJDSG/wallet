@@ -7,6 +7,8 @@ import com.wallet.channel.model.PayRequest;
 import com.wallet.channel.model.TradeInfo;
 import com.wallet.channel.spi.TradeStore;
 import com.wallet.pay.entity.PayPart;
+import com.wallet.pay.enums.PayType;
+import com.wallet.pay.state.PartState;
 import com.wallet.pay.mapper.PayPartMapper;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +39,7 @@ public class TradeStoreImpl implements TradeStore {
     @Override
     public TradeInfo find(String channelCode, String orderNo, String outTradeNo) {
         PayPart part = payPartMapper.findByPartNo(outTradeNo);
-        if (part == null || !part.getOrderNo().equals(orderNo) || !"CHANNEL".equals(part.getPayType())
+        if (part == null || !part.getOrderNo().equals(orderNo) || part.getPayType() != PayType.CHANNEL
             || !part.getChannelCode().equals(channelCode)) {
             return null;
         }
@@ -46,10 +48,13 @@ public class TradeStoreImpl implements TradeStore {
 
     @Override
     public boolean changeState(String outTradeNo, PayState from, PayState to, String thirdOutTradeNo) {
+        // 内核 PayState 与本地 PartState 同名（PartState 多一个 ROLLBACK，属本地补偿语义）
+        PartState localFrom = PartState.valueOf(from.name());
+        PartState localTo = PartState.valueOf(to.name());
         if (thirdOutTradeNo != null) {
-            return payPartMapper.changeStateWithThird(outTradeNo, from.name(), to.name(), thirdOutTradeNo) == 1;
+            return payPartMapper.changeStateWithThird(outTradeNo, localFrom, localTo, thirdOutTradeNo) == 1;
         }
-        return payPartMapper.changeState(outTradeNo, from.name(), to.name()) == 1;
+        return payPartMapper.changeState(outTradeNo, localFrom, localTo) == 1;
     }
 
     @Override
@@ -59,7 +64,7 @@ public class TradeStoreImpl implements TradeStore {
 
     private PayPart findChannelPart(String orderNo) {
         for (PayPart part : payPartMapper.findByOrderNo(orderNo)) {
-            if ("CHANNEL".equals(part.getPayType())) {
+            if (part.getPayType() == PayType.CHANNEL) {
                 return part;
             }
         }
@@ -71,7 +76,7 @@ public class TradeStoreImpl implements TradeStore {
             .orderNo(part.getOrderNo())
             .outTradeNo(part.getPartNo())
             .channelCode(part.getChannelCode())
-            .state(PayState.valueOf(part.getState()))
+            .state(PayState.valueOf(part.getState().name()))
             .amount(part.getAmount())
             .currency("TWD")
             .refundableAmount(part.getAmount() - part.getRefundedAmount())

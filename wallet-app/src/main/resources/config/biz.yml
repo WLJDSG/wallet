@@ -1,0 +1,20 @@
+# 业务参数（wallet.*）：变更频率最高的一类，只影响业务行为，不碰基础设施。
+wallet:
+  pay:
+    expire-minutes: 15        # 支付单超时分钟数
+    points-per-yuan: 100      # 100 积分抵 1 元
+  password:
+    max-continuous-fail: 5    # 连续错 5 次锁定
+    max-daily-fail: 10        # 当日错 10 次锁定
+    lock-minutes: 10
+    ticket-ttl-seconds: 300
+    bcrypt-strength: 12
+  # Antom（支付宝国际）真实渠道：默认关闭，配好密钥后置 enabled=true 即启用
+  antom:
+    enabled: false
+    gateway: https://globalapi.alipay.com
+    client-id: ''
+    merchant-private-key: ''
+    alipay-public-key: ''
+    base-url: http://localhost:8080
+    expiry-minutes: 10

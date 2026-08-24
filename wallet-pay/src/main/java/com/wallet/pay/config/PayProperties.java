@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 支付编排配置（application.yml 的 wallet.pay.*）。
  */
 @ConfigurationProperties(prefix = "wallet.pay")
-public class PayConfig {
+public class PayProperties {
 
     /** 支付单超时分钟数（超时关单任务扫描） */
     private int expireMinutes = 15;

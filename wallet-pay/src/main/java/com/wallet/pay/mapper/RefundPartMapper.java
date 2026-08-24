@@ -1,10 +1,11 @@
 package com.wallet.pay.mapper;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.wallet.channel.enums.RefundState;
 import com.wallet.pay.entity.RefundPart;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
@@ -15,15 +16,21 @@ import java.util.List;
 @Mapper
 public interface RefundPartMapper extends BaseMapper<RefundPart> {
 
-    @Select("SELECT * FROM refund_part WHERE refund_part_no = #{refundPartNo} LIMIT 1")
-    RefundPart findByRefundPartNo(@Param("refundPartNo") String refundPartNo);
+    default RefundPart findByRefundPartNo(String refundPartNo) {
+        return selectOne(new LambdaQueryWrapper<RefundPart>()
+            .eq(RefundPart::getRefundPartNo, refundPartNo)
+            .last("LIMIT 1"));
+    }
 
-    @Select("SELECT * FROM refund_part WHERE refund_no = #{refundNo} ORDER BY id")
-    List<RefundPart> findByRefundNo(@Param("refundNo") String refundNo);
+    default List<RefundPart> findByRefundNo(String refundNo) {
+        return selectList(new LambdaQueryWrapper<RefundPart>()
+            .eq(RefundPart::getRefundNo, refundNo)
+            .orderByAsc(RefundPart::getId));
+    }
 
     /** 条件推进状态 */
     @Update("UPDATE refund_part SET state = #{to}, update_time = NOW() "
         + "WHERE refund_part_no = #{refundPartNo} AND state = #{from}")
-    int changeState(@Param("refundPartNo") String refundPartNo, @Param("from") String from,
-        @Param("to") String to);
+    int changeState(@Param("refundPartNo") String refundPartNo, @Param("from") RefundState from,
+        @Param("to") RefundState to);
 }
