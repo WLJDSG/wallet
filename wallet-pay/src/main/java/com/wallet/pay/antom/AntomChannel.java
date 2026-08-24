@@ -33,6 +33,7 @@ import com.wallet.channel.model.TradeInfo;
 import com.wallet.pay.service.ChannelConfigService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -59,6 +60,7 @@ import java.time.format.DateTimeFormatter;
  */
 @Slf4j
 @Component
+@AllArgsConstructor
 public class AntomChannel implements PayAction, QueryAction, RefundAction, CancelAction, CallbackAction {
 
     public static final String CHANNEL_CODE = "ANTOM";
@@ -74,9 +76,6 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
     private record CachedClient(String key, AlipayClient client) {
     }
 
-    public AntomChannel(ChannelConfigService channelConfigs) {
-        this.channelConfigs = channelConfigs;
-    }
 
     @Override
     public String code() {

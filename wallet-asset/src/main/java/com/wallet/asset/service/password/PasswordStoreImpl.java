@@ -1,5 +1,6 @@
 package com.wallet.asset.service.password;
 
+import lombok.AllArgsConstructor;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.wallet.asset.entity.PayPassword;
@@ -12,13 +13,11 @@ import java.time.LocalDateTime;
  * 基于 MyBatis-Plus 的支付密码存储实现。
  */
 @Component
+@AllArgsConstructor
 public class PasswordStoreImpl implements PasswordStore {
 
     private final PayPasswordMapper mapper;
 
-    public PasswordStoreImpl(PayPasswordMapper mapper) {
-        this.mapper = mapper;
-    }
 
     @Override
     public PayPassword findByUserId(Long userId) {

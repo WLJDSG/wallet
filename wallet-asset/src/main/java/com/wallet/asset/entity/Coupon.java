@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
+import com.wallet.asset.enums.CouponType;
+
 import java.time.LocalDateTime;
 
 /**
@@ -15,8 +17,15 @@ public class Coupon {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String name;
+    /** 券类型：FULL_CUT 满减 / DISCOUNT 折扣 */
+    private CouponType type;
+    /** 满减券面额分；折扣券为 0 */
     private Long faceAmount;
     private Long minAmount;
+    /** 折扣券：折扣率百分比（85=八五折），满减券为 0 */
+    private Integer discountRate;
+    /** 最高抵扣分，0 不限 */
+    private Long maxDeductAmount;
     private Integer totalCount;
     private Integer takenCount;
     private LocalDateTime expireTime;
@@ -29,6 +38,30 @@ public class Coupon {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public CouponType getType() {
+        return type;
+    }
+
+    public void setType(CouponType type) {
+        this.type = type;
+    }
+
+    public Integer getDiscountRate() {
+        return discountRate;
+    }
+
+    public void setDiscountRate(Integer discountRate) {
+        this.discountRate = discountRate;
+    }
+
+    public Long getMaxDeductAmount() {
+        return maxDeductAmount;
+    }
+
+    public void setMaxDeductAmount(Long maxDeductAmount) {
+        this.maxDeductAmount = maxDeductAmount;
     }
 
     public String getName() {

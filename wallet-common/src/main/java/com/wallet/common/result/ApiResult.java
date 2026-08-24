@@ -1,5 +1,6 @@
 package com.wallet.common.result;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wallet.common.trace.TraceIds;
 
@@ -14,7 +15,13 @@ import java.time.LocalDateTime;
  * @param traceId   本次请求链路 ID，可为 null（未经过 HTTP 入口的场景）
  * @param timestamp 响应时间
  */
-public record ApiResult<T>(String code, String message, T data, String traceId, LocalDateTime timestamp) {
+@Schema(description = "统一返回体")
+public record ApiResult<T>(
+    @Schema(description = "错误码，\"0\" 表示成功", example = "0") String code,
+    @Schema(description = "提示信息", example = "ok") String message,
+    @Schema(description = "业务数据，可为 null") T data,
+    @Schema(description = "链路追踪 ID，可凭此串日志") String traceId,
+    @Schema(description = "响应时间") LocalDateTime timestamp) {
 
     public static final String OK_CODE = "0";
 

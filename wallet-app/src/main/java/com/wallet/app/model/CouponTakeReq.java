@@ -1,5 +1,6 @@
 package com.wallet.app.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Positive;
 
 /**
@@ -7,5 +8,8 @@ import jakarta.validation.constraints.Positive;
  *
  * @param couponId 券模板 ID
  */
-public record CouponTakeReq(@Positive(message = "券模板 ID 不正确") long couponId) {
+@Schema(description = "领券请求")
+public record CouponTakeReq(
+    @Schema(description = "券模板 ID", example = "1")
+    @Positive(message = "券模板 ID 不正确") long couponId) {
 }

@@ -1,8 +1,11 @@
 package com.wallet.pay.state;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 支付主单状态。
  */
+@Schema(description = "支付主单状态")
 public enum OrderState {
 
     /** 已创建，未提交支付 */

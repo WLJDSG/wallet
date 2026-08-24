@@ -1,5 +1,6 @@
 package com.wallet.asset.service;
 
+import lombok.AllArgsConstructor;
 import com.wallet.asset.entity.Account;
 import com.wallet.asset.error.AssetError;
 import com.wallet.asset.mapper.AccountMapper;
@@ -14,15 +15,12 @@ import java.time.LocalDateTime;
  * 账户服务：首次访问建账户、资产总览。
  */
 @Service
+@AllArgsConstructor
 public class AccountService {
 
     private final AccountMapper accountMapper;
     private final CouponService couponService;
 
-    public AccountService(AccountMapper accountMapper, CouponService couponService) {
-        this.accountMapper = accountMapper;
-        this.couponService = couponService;
-    }
 
     /** 确保账户存在（首次访问时创建）。 */
     @Transactional

@@ -1,5 +1,6 @@
 package com.wallet.pay.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wallet.pay.enums.PayType;
 import com.wallet.channel.enums.RefundState;
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -13,19 +14,31 @@ import java.time.LocalDateTime;
  * 三方段状态 INIT→REFUNDING→SUCCESS/FAIL；资产段 INIT→SUCCESS/FAIL。
  */
 @TableName("refund_part")
+@Schema(description = "退款分段（按支付分段分摊）")
 public class RefundPart {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键")
     private Long id;
+    @Schema(description = "退款分段号（兼资产流水幂等号）")
     private String refundPartNo;
+    @Schema(description = "所属退款单号")
     private String refundNo;
+    @Schema(description = "对应支付分段号")
     private String partNo;
+    @Schema(description = "分段类型")
     private PayType payType;
+    @Schema(description = "本段退款金额，单位分")
     private Long amount;
+    @Schema(description = "退还积分数")
     private Long pointCount;
+    @Schema(description = "渠道侧退款单号")
     private String channelRefundNo;
+    @Schema(description = "退款分段状态")
     private RefundState state;
+    @Schema(description = "创建时间")
     private LocalDateTime createTime;
+    @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
     public Long getId() {

@@ -1,8 +1,11 @@
 package com.wallet.asset.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
+import com.wallet.asset.enums.CouponType;
 
 import java.time.LocalDateTime;
 
@@ -11,19 +14,37 @@ import java.time.LocalDateTime;
  * status：0 未使用 / 1 已使用 / 2 已失效。
  */
 @TableName("user_coupon")
+@Schema(description = "用户券")
 public class UserCoupon {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "用户券 ID")
     private Long id;
+    @Schema(description = "用户ID")
     private Long userId;
+    @Schema(description = "券模板 ID")
     private Long couponId;
+    @Schema(description = "券名称（快照）")
     private String name;
+    @Schema(description = "券类型：FULL_CUT 满减 / DISCOUNT 折扣（快照）")
+    private CouponType type;
+    @Schema(description = "满减券面额，单位分；折扣券为 0（快照）")
     private Long faceAmount;
+    @Schema(description = "使用门槛，单位分（快照）")
     private Long minAmount;
+    @Schema(description = "折扣券折扣率百分比，85=八五折（快照）")
+    private Integer discountRate;
+    @Schema(description = "最高抵扣，单位分，0 不限（快照）")
+    private Long maxDeductAmount;
+    @Schema(description = "状态：0 未用 1 已用 2 失效")
     private Integer status;
+    @Schema(description = "核销支付单号")
     private String useOrderNo;
+    @Schema(description = "核销时间")
     private LocalDateTime useTime;
+    @Schema(description = "过期时间")
     private LocalDateTime expireTime;
+    @Schema(description = "领取时间")
     private LocalDateTime createTime;
 
     public Long getId() {
@@ -56,6 +77,30 @@ public class UserCoupon {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public CouponType getType() {
+        return type;
+    }
+
+    public void setType(CouponType type) {
+        this.type = type;
+    }
+
+    public Integer getDiscountRate() {
+        return discountRate;
+    }
+
+    public void setDiscountRate(Integer discountRate) {
+        this.discountRate = discountRate;
+    }
+
+    public Long getMaxDeductAmount() {
+        return maxDeductAmount;
+    }
+
+    public void setMaxDeductAmount(Long maxDeductAmount) {
+        this.maxDeductAmount = maxDeductAmount;
     }
 
     public Long getFaceAmount() {

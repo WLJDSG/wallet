@@ -1,8 +1,11 @@
 package com.wallet.pay.state;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 支付分段状态。
  */
+@Schema(description = "支付分段状态")
 public enum PartState {
 
     /** 已创建，未处理 */

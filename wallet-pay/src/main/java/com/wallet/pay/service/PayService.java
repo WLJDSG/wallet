@@ -1,7 +1,5 @@
 package com.wallet.pay.service;
 
-import com.wallet.asset.service.CouponService;
-import com.wallet.asset.service.password.PasswordService;
 import com.wallet.channel.ChannelKit;
 import com.wallet.channel.enums.ActionType;
 import com.wallet.channel.enums.PayError;
@@ -34,6 +32,10 @@ import com.wallet.pay.state.PartEvent;
 import com.wallet.pay.state.PartState;
 import com.wallet.pay.state.OrderStateMachine;
 import com.wallet.pay.state.PartStateMachine;
+import com.wallet.pay.validate.PayScene;
+import com.wallet.pay.validate.PayValidationContext;
+import com.wallet.pay.validate.PayValidatorChain;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
@@ -57,12 +59,11 @@ import java.util.Map;
  */
 @Slf4j
 @Service
+@AllArgsConstructor
 public class PayService {
 
     private final PayOrderMapper payOrderMapper;
     private final PayPartMapper payPartMapper;
-    private final CouponService couponService;
-    private final PasswordService passwordService;
     private final ChannelKit channelKit;
     private final MockNotifyService mockNotifyService;
     private final PayProperties config;
@@ -70,22 +71,8 @@ public class PayService {
     private final AssetPartService assetPartService;
 
     private final OrderFinisher orderFinisher;
+    private final PayValidatorChain validatorChain;
 
-    public PayService(PayOrderMapper payOrderMapper, PayPartMapper payPartMapper,
-        CouponService couponService, PasswordService passwordService,
-        ChannelKit channelKit, MockNotifyService mockNotifyService, PayProperties config, ApplicationEventPublisher events,
-        AssetPartService assetPartService, OrderFinisher orderFinisher) {
-        this.payOrderMapper = payOrderMapper;
-        this.payPartMapper = payPartMapper;
-        this.couponService = couponService;
-        this.passwordService = passwordService;
-        this.channelKit = channelKit;
-        this.mockNotifyService = mockNotifyService;
-        this.config = config;
-        this.events = events;
-        this.assetPartService = assetPartService;
-        this.orderFinisher = orderFinisher;
-    }
 
     /**
      * 创建支付单：校验分段合法性，落主单 + 全部分段（INIT）。不持锁——
@@ -98,21 +85,8 @@ public class PayService {
         if (exist != null) {
             return existingOrder(exist, cmd);
         }
-        long sum = 0;
-        int channelCount = 0;
-        for (PartItem item : cmd.parts()) {
-            sum += item.amount();
-            if (item.payType() == PayType.CHANNEL) {
-                channelCount++;
-            }
-            validatePart(userId, item, cmd.totalAmount());
-        }
-        if (sum != cmd.totalAmount()) {
-            throw new BizException(OrderError.AMOUNT_NOT_MATCH, "sum=" + sum + ", total=" + cmd.totalAmount());
-        }
-        if (channelCount > 1) {
-            throw new BizException(OrderError.PART_INVALID, "一个支付单至多一个三方分段");
-        }
+        // 责任链校验：金额勾稽、分段条件必填、券规则引擎抵扣额
+        validatorChain.validate(PayValidationContext.forCreate(appId, userId, cmd));
 
         String orderNo = IdMaker.next("P");
         LocalDateTime now = LocalDateTime.now();
@@ -167,40 +141,6 @@ public class PayService {
         return new CreateOrderResult(exist.getOrderNo(), exist.getExpireTime());
     }
 
-    private void validatePart(Long userId, PartItem item, long totalAmount) {
-        switch (item.payType()) {
-            case COUPON -> {
-                if (item.userCouponId() == null) {
-                    throw new BizException(OrderError.PART_INVALID, "券段缺少 userCouponId");
-                }
-                var userCoupon = couponService.checkUsable(userId, item.userCouponId(), totalAmount);
-                if (userCoupon.getFaceAmount() != item.amount()) {
-                    throw new BizException(OrderError.PART_INVALID,
-                        "券段金额必须等于面额 " + userCoupon.getFaceAmount());
-                }
-            }
-            case POINT -> {
-                if (item.pointCount() == null || item.pointCount() <= 0) {
-                    throw new BizException(OrderError.PART_INVALID, "积分段缺少 pointCount");
-                }
-                long expectAmount = item.pointCount() * 100 / config.getPointsPerYuan();
-                if (expectAmount != item.amount()) {
-                    throw new BizException(OrderError.PART_INVALID,
-                        "积分段金额应为 " + expectAmount + "（" + item.pointCount() + " 积分按 "
-                            + config.getPointsPerYuan() + " 积分/元折算）");
-                }
-            }
-            case MONEY -> {
-                // 无需额外校验
-            }
-            case CHANNEL -> {
-                if (item.channelCode() == null || item.channelCode().trim().isEmpty()) {
-                    throw new BizException(OrderError.PART_INVALID, "三方段缺少 channelCode");
-                }
-            }
-        }
-    }
-
     /** 提交支付：持单锁，扣资产段（事务）+ 发起三方（事务外）。 */
     @Lock4j(name = "order", keys = "#orderNo")
     public SubmitResult submit(Long userId, String orderNo, String ticket) {
@@ -208,25 +148,17 @@ public class PayService {
     }
 
     private SubmitResult doSubmit(Long userId, String orderNo, String ticket) {
-        PayOrder order = requireOwned(userId, orderNo);
+        PayOrder order = payOrderMapper.findByOrderNo(orderNo);
+        List<PayPart> parts = order == null ? List.of() : payPartMapper.findByOrderNo(orderNo);
+        // 责任链校验：归属 → 终态拦截 → 票据校验并消费（INIT 首次提交且含资产段时）
+        validatorChain.validate(PayValidationContext.forSubmit(userId, orderNo, order, parts, ticket));
+
         OrderState state = order.getState();
         if (state == OrderState.SUCCESS) {
             return new SubmitResult("SUCCESS", null, "订单已支付");
         }
-        if (state == OrderState.CLOSED || state == OrderState.FAIL) {
-            throw new BizException(OrderError.ORDER_STATE_INVALID, "state=" + state);
-        }
-
-        List<PayPart> parts = payPartMapper.findByOrderNo(orderNo);
 
         if (state == OrderState.INIT) {
-            // 含资产段的支付必须校验并消费支付密码授权票据
-            if (hasAssetPart(parts)) {
-                if (ticket == null || ticket.trim().isEmpty()) {
-                    throw new BizException(OrderError.TICKET_REQUIRED, orderNo);
-                }
-                passwordService.consumeTicket(ticket, userId, orderNo, order.getTotalAmount());
-            }
             // 主单 INIT→PAYING（CAS，防并发重复提交）
             if (payOrderMapper.changeState(orderNo, OrderState.INIT, OrderState.PAYING) == 0) {
                 log.info("提交支付被并发处理, orderNo={}", orderNo);
@@ -318,7 +250,8 @@ public class PayService {
     }
 
     private boolean doQuery(Long userId, String orderNo) {
-        PayOrder order = requireOwned(userId, orderNo);
+        PayOrder order = payOrderMapper.findByOrderNo(orderNo);
+        validatorChain.validate(PayValidationContext.forOrder(PayScene.QUERY, userId, orderNo, order));
         if (order.getState() == OrderState.SUCCESS) {
             return true;
         }
@@ -350,7 +283,8 @@ public class PayService {
     }
 
     private String doCancel(Long userId, String orderNo) {
-        PayOrder order = requireOwned(userId, orderNo);
+        PayOrder order = payOrderMapper.findByOrderNo(orderNo);
+        validatorChain.validate(PayValidationContext.forOrder(PayScene.CANCEL, userId, orderNo, order));
         OrderState state = order.getState();
         if (state == OrderState.SUCCESS) {
             throw new BizException(OrderError.ORDER_PAID, orderNo);
@@ -449,28 +383,9 @@ public class PayService {
 
     /** 支付单详情 */
     public OrderDetail detail(Long userId, String orderNo) {
-        PayOrder order = requireOwned(userId, orderNo);
-        return new OrderDetail(order, payPartMapper.findByOrderNo(orderNo));
-    }
-
-    private PayOrder requireOwned(Long userId, String orderNo) {
         PayOrder order = payOrderMapper.findByOrderNo(orderNo);
-        if (order == null) {
-            throw new BizException(OrderError.ORDER_NOT_FOUND, orderNo);
-        }
-        if (!order.getUserId().equals(userId)) {
-            throw new BizException(OrderError.ORDER_NOT_OWNED, orderNo);
-        }
-        return order;
-    }
-
-    private boolean hasAssetPart(List<PayPart> parts) {
-        for (PayPart part : parts) {
-            if (part.getPayType().isAsset()) {
-                return true;
-            }
-        }
-        return false;
+        validatorChain.validate(PayValidationContext.forOrder(PayScene.DETAIL, userId, orderNo, order));
+        return new OrderDetail(order, payPartMapper.findByOrderNo(orderNo));
     }
 
     private PayPart channelPartOf(List<PayPart> parts) {

@@ -5,6 +5,7 @@ import com.wallet.common.error.CommonError;
 import com.wallet.common.result.ApiResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RedissonClient;
@@ -27,6 +28,7 @@ import java.util.Map;
  * </ul>
  */
 @Slf4j
+@AllArgsConstructor
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final RedissonClient redisson;
@@ -35,14 +37,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final int qpsPerIp;
     private final int qpsPerUser;
 
-    public RateLimitInterceptor(RedissonClient redisson, ObjectMapper objectMapper,
-        int qpsGlobal, int qpsPerIp, int qpsPerUser) {
-        this.redisson = redisson;
-        this.objectMapper = objectMapper;
-        this.qpsGlobal = qpsGlobal;
-        this.qpsPerIp = qpsPerIp;
-        this.qpsPerUser = qpsPerUser;
-    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)

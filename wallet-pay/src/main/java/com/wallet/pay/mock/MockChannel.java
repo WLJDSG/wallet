@@ -1,5 +1,6 @@
 package com.wallet.pay.mock;
 
+import lombok.AllArgsConstructor;
 import com.wallet.channel.action.CallbackAction;
 import com.wallet.channel.action.CancelAction;
 import com.wallet.channel.action.PayAction;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(prefix = "wallet.mock", name = "enabled", havingValue = "true", matchIfMissing = true)
+@AllArgsConstructor
 public class MockChannel implements PayAction, QueryAction, RefundAction, CancelAction, CallbackAction {
 
     /** 渠道编码（PayService 判断是否安排 mock 自动回调时引用） */
@@ -34,10 +36,6 @@ public class MockChannel implements PayAction, QueryAction, RefundAction, Cancel
     private final MockStore store;
     private final MockProperties props;
 
-    public MockChannel(MockStore store, MockProperties props) {
-        this.store = store;
-        this.props = props;
-    }
 
     @Override
     public String code() {

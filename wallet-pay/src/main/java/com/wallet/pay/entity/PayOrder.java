@@ -1,5 +1,6 @@
 package com.wallet.pay.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wallet.pay.state.OrderState;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -11,25 +12,42 @@ import java.time.LocalDateTime;
  * 支付主单。
  */
 @TableName("pay_order")
+@Schema(description = "支付主单")
 public class PayOrder {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键")
     private Long id;
+    @Schema(description = "钱包支付单号")
     private String orderNo;
     /** 来源商城/接入方（多商城预留，缺省 DEFAULT） */
+    @Schema(description = "来源商城/接入方")
     private String appId;
+    @Schema(description = "外部业务单号")
     private String bizOrderNo;
+    @Schema(description = "用户ID")
     private Long userId;
+    @Schema(description = "应付总额，单位分")
     private Long totalAmount;
+    @Schema(description = "币种")
     private String currency;
+    @Schema(description = "主单状态")
     private OrderState state;
+    @Schema(description = "超时关单时间")
     private LocalDateTime expireTime;
+    @Schema(description = "支付完成时间")
     private LocalDateTime payTime;
+    @Schema(description = "关闭时间")
     private LocalDateTime closeTime;
+    @Schema(description = "剩余可退金额，单位分")
     private Long refundableAmount;
+    @Schema(description = "已退金额，单位分")
     private Long refundedAmount;
+    @Schema(description = "失败原因")
     private String failReason;
+    @Schema(description = "创建时间")
     private LocalDateTime createTime;
+    @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
     public Long getId() {

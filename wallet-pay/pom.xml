@@ -35,6 +35,11 @@
             <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
         <dependency>
+            <!-- Swagger @Schema 注解（仅注解包） -->
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+        </dependency>
+        <dependency>
             <!-- 渠道调用日志序列化（Jackson 2，Boot BOM 管版本） -->
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>

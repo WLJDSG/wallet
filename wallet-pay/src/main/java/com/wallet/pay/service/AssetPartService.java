@@ -13,6 +13,7 @@ import com.wallet.pay.mapper.PayPartMapper;
 import com.wallet.pay.mapper.RefundOrderMapper;
 import com.wallet.pay.mapper.RefundPartMapper;
 import com.wallet.pay.state.PartState;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.wallet.channel.enums.RefundState;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@AllArgsConstructor
 public class AssetPartService {
 
     private final PayPartMapper payPartMapper;
@@ -40,17 +42,6 @@ public class AssetPartService {
     private final PointService pointService;
     private final CouponService couponService;
 
-    public AssetPartService(PayPartMapper payPartMapper, PayOrderMapper payOrderMapper,
-        RefundPartMapper refundPartMapper, RefundOrderMapper refundOrderMapper, MoneyService moneyService,
-        PointService pointService, CouponService couponService) {
-        this.payPartMapper = payPartMapper;
-        this.payOrderMapper = payOrderMapper;
-        this.refundPartMapper = refundPartMapper;
-        this.refundOrderMapper = refundOrderMapper;
-        this.moneyService = moneyService;
-        this.pointService = pointService;
-        this.couponService = couponService;
-    }
 
     /** 扣资产段：一个本地事务内按 券→积分→余额 顺序扣减，任一失败整体回滚 */
     @Transactional

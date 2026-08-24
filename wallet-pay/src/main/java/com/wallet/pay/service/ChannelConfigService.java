@@ -6,6 +6,7 @@ import com.wallet.channel.enums.PayError;
 import com.wallet.channel.error.ChannelException;
 import com.wallet.pay.entity.ChannelConfig;
 import com.wallet.pay.mapper.ChannelConfigMapper;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Service
+@AllArgsConstructor
 public class ChannelConfigService {
 
     private static final long CACHE_TTL_MS = 30_000;
@@ -31,9 +33,6 @@ public class ChannelConfigService {
     private final ChannelConfigMapper channelConfigMapper;
     private final Map<String, Cached> cache = new ConcurrentHashMap<>();
 
-    public ChannelConfigService(ChannelConfigMapper channelConfigMapper) {
-        this.channelConfigMapper = channelConfigMapper;
-    }
 
     /** 缓存条目：config 可为 null（渠道未配置也缓存，防穿透） */
     private record Cached(ChannelConfig config, long loadedAt) {

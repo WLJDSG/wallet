@@ -1,5 +1,6 @@
 package com.wallet.app.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Positive;
 
 /**
@@ -7,5 +8,8 @@ import jakarta.validation.constraints.Positive;
  *
  * @param amount 充值金额，单位分
  */
-public record RechargeReq(@Positive(message = "充值金额必须大于 0") long amount) {
+@Schema(description = "模拟充值请求")
+public record RechargeReq(
+    @Schema(description = "充值金额，单位分", example = "10000")
+    @Positive(message = "充值金额必须大于 0") long amount) {
 }

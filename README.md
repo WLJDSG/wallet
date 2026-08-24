@@ -104,7 +104,6 @@ SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `20
 ```bash
 mysql -uroot -e "CREATE DATABASE IF NOT EXISTS wallet DEFAULT CHARSET utf8mb4"
 mysql -uroot wallet < sql/2026-08-24-钱包建表.sql
-mysql -uroot wallet < sql/2026-08-24-渠道配置表.sql       # 渠道配置表（含 Antom 模板行）
 mysql -uroot wallet < sql/2026-08-24-优惠券种子数据.sql   # 可选：两张联调用券模板
 ```
 
@@ -458,6 +457,26 @@ erDiagram
 - 未支付的订单：查证渠道 → 关渠道交易 → 补偿返还资产段（幂等流水保证重放安全）→ 关单；
 - 资金 CAS（扣可退、扣余额等）全部校验影响行数，失败即抛异常回滚所在事务。
 
+### 责任链校验（支付域入口）
+
+创建/提交/详情/查证/取消/退款入口的校验统一走 `PayValidatorChain`（`pay/validate/`）：
+校验器实现 `PayValidator` 声明适用场景（PayScene）与顺序（归属 10 → 状态 20 → 明细/票据 30），
+注册为 Bean 即自动入链；**新增校验 = 新增一个实现类，服务层零改动**。
+现有节点：归属校验（全场景）、创建金额勾稽、分段规则（含券规则引擎）、提交终态拦截、
+票据校验消费（链上唯一有副作用的节点，放最后）、退款金额校验。
+
+### 通用规则引擎 + 券规则
+
+`wallet-common` 提供通用抽象：`Rule<F, R>`（matches/apply/order）+ `RulePipeline`（排序执行、结果沿管道传递）。
+各业务域定义自己的 fact 与规则子接口接入——**优惠券是第一个接入域**，后续营销活动等照此模式：
+
+- 券域：`CouponFact`（券+订单额）→ `CouponDeductRule` → 管道：
+  最低消费校验(10) → 满减/折扣计算(20) → 最高抵扣封顶(30) → 不超订单额且必须为正(40)；
+- 券类型：`FULL_CUT` 满减（面额）、`DISCOUNT` 折扣（discount_rate，85=八五折），
+  公共约束 min_amount（最低消费）与 max_deduct_amount（最高抵扣）；
+- **新增券玩法 = 加枚举值 + 一个 @Component 规则实现**，引擎与下单校验零改动；
+- 券段金额必须等于引擎计算的抵扣额（创建时责任链校验），退款侧"券不折现"逻辑不变。
+
 ### 领域事件
 `OrderPaidEvent` / `OrderClosedEvent` / `RefundSuccessEvent` 在 CAS 推进成功处发布（至多一次）。
 业务联动写 `@EventListener` 订阅（示例见 `DomainEventLogger`），服务间不互相调用。
@@ -497,7 +516,12 @@ HTTP 状态码约定（影响调用方重试语义，尤其渠道回调）：
 
 ## 开发约定
 
-- **日志**：统一 SLF4J，Lombok 仅用于 `@Slf4j` 注解；error 日志必须带异常堆栈（异常对象作最后一个参数）。
+- **日志**：统一 SLF4J（`@Slf4j`）；error 日志必须带异常堆栈（异常对象作最后一个参数）。
+- **Lombok 使用范围**：`@Slf4j` + `@AllArgsConstructor`（Bean 依赖注入，构造器不手写）；
+  构造器里有初始化逻辑（如 PasswordService）或参数带 @Value（如 WebConfig）时保留手写；
+  entity 仍手写 getter/setter，model 用 record。
+- **Swagger（OpenAPI 3）**：控制器标 `@Tag`/`@Operation`/`@Parameter`，出入参与暴露实体标 `@Schema`；
+  文档信息在 `OpenApiConfig`，在线文档 `/swagger-ui.html`。
 - **数据访问**：Mapper 全部 default 方法 + `LambdaQueryWrapper`/`LambdaUpdateWrapper`，不写注解/XML SQL；
   分页用 `PaginationInnerInterceptor`（已装配）。
 - **序列化**：Jackson 全局配置（`JacksonConfig`）——`LocalDateTime ⇄ yyyy-MM-dd HH:mm:ss`、
@@ -541,6 +565,6 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test
 （`PayAction` 必选，`QueryAction`/`RefundAction`/`CancelAction`/`CallbackAction`/`ConfirmAction` 按渠道能力选），
 Spring 会自动收集所有 `Channel` Bean 注册进 `ChannelKit`（见 `ChannelConfig`）。
 参考 `antom/` 目录的 Antom（支付宝国际）渠道示范：商户配置在 `channel_config` 表
-（`sql/2026-08-24-渠道配置表.sql` 有模板行），填好 config_json 密钥、enabled 置 1 即启用，
+（建表 SQL 已含 channel_config 表与 Antom 模板行），填好 config_json 密钥、enabled 置 1 即启用，
 改库 30 秒内生效无需重启；测试/生产环境切换改 config_json 里的 gateway（沙箱地址）即可。
 内核在构建期校验渠道动作完整性，配置错误启动即失败。

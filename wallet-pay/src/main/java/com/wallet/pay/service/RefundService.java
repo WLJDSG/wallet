@@ -21,6 +21,9 @@ import com.wallet.pay.model.RefundCreateResult;
 import com.wallet.pay.model.RefundDetail;
 import com.wallet.pay.state.OrderState;
 import com.wallet.pay.state.RefundOrderState;
+import com.wallet.pay.validate.PayValidationContext;
+import com.wallet.pay.validate.PayValidatorChain;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@AllArgsConstructor
 public class RefundService {
 
     private final RefundOrderMapper refundOrderMapper;
@@ -49,20 +53,8 @@ public class RefundService {
     private final ApplicationEventPublisher events;
     private final AssetPartService assetPartService;
     private final TransactionTemplate transactionTemplate;
+    private final PayValidatorChain validatorChain;
 
-    public RefundService(RefundOrderMapper refundOrderMapper, RefundPartMapper refundPartMapper,
-        PayOrderMapper payOrderMapper, PayPartMapper payPartMapper, ChannelKit channelKit,
-        ApplicationEventPublisher events, AssetPartService assetPartService,
-        TransactionTemplate transactionTemplate) {
-        this.refundOrderMapper = refundOrderMapper;
-        this.refundPartMapper = refundPartMapper;
-        this.payOrderMapper = payOrderMapper;
-        this.payPartMapper = payPartMapper;
-        this.channelKit = channelKit;
-        this.events = events;
-        this.assetPartService = assetPartService;
-        this.transactionTemplate = transactionTemplate;
-    }
 
     /** 发起退款（持同一把支付单锁，与支付/回调互斥） */
     @Lock4j(name = "order", keys = "#orderNo")
@@ -72,22 +64,8 @@ public class RefundService {
 
     private RefundCreateResult doCreate(Long userId, String orderNo, long amount, String reason) {
         PayOrder order = payOrderMapper.findByOrderNo(orderNo);
-        if (order == null) {
-            throw new BizException(OrderError.ORDER_NOT_FOUND, orderNo);
-        }
-        if (!order.getUserId().equals(userId)) {
-            throw new BizException(OrderError.ORDER_NOT_OWNED, orderNo);
-        }
-        if (order.getState() != OrderState.SUCCESS) {
-            throw new BizException(OrderError.ORDER_NOT_PAID, orderNo);
-        }
-        if (amount <= 0) {
-            throw new BizException(OrderError.REFUND_AMOUNT_INVALID, "amount=" + amount);
-        }
-        if (order.getRefundableAmount() < amount) {
-            throw new BizException(OrderError.REFUND_TOO_MUCH,
-                "申请 " + amount + "，可退 " + order.getRefundableAmount());
-        }
+        // 责任链校验：归属 → 已支付 → 退款金额合法且不超可退
+        validatorChain.validate(PayValidationContext.forRefund(userId, orderNo, order, amount));
 
         List<PayPart> parts = payPartMapper.findByOrderNo(orderNo);
         List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, amount);

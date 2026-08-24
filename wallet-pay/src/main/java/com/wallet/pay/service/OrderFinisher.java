@@ -8,6 +8,7 @@ import com.wallet.pay.mapper.PayOrderMapper;
 import com.wallet.pay.mapper.PayPartMapper;
 import com.wallet.pay.state.OrderState;
 import com.wallet.pay.state.PartState;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -22,18 +23,13 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@AllArgsConstructor
 public class OrderFinisher {
 
     private final PayOrderMapper payOrderMapper;
     private final PayPartMapper payPartMapper;
     private final ApplicationEventPublisher events;
 
-    public OrderFinisher(PayOrderMapper payOrderMapper, PayPartMapper payPartMapper,
-        ApplicationEventPublisher events) {
-        this.payOrderMapper = payOrderMapper;
-        this.payPartMapper = payPartMapper;
-        this.events = events;
-    }
 
     /**
      * 全部分段 SUCCESS 才推进主单（可退金额 = 总额 - 券面额）；

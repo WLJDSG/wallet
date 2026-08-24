@@ -1,5 +1,6 @@
 package com.wallet.asset.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wallet.asset.entity.UserCoupon;
 
 import java.util.List;
@@ -11,5 +12,9 @@ import java.util.List;
  * @param point         积分数量
  * @param usableCoupons 可用券列表
  */
-public record AssetSummary(long money, long point, List<UserCoupon> usableCoupons) {
+@Schema(description = "资产总览")
+public record AssetSummary(
+    @Schema(description = "余额，单位分") long money,
+    @Schema(description = "积分数量") long point,
+    @Schema(description = "可用券列表") List<UserCoupon> usableCoupons) {
 }

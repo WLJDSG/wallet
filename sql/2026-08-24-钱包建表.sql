@@ -47,8 +47,11 @@ CREATE TABLE IF NOT EXISTS point_log (
 CREATE TABLE IF NOT EXISTS coupon (
   id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name        VARCHAR(64) NOT NULL,
-  face_amount BIGINT      NOT NULL COMMENT '面额分',
-  min_amount  BIGINT      NOT NULL DEFAULT 0 COMMENT '使用门槛分，0不限',
+  type        VARCHAR(16) NOT NULL DEFAULT 'FULL_CUT' COMMENT 'FULL_CUT满减 / DISCOUNT折扣',
+  face_amount BIGINT      NOT NULL DEFAULT 0 COMMENT '满减券面额分；折扣券为0',
+  min_amount  BIGINT      NOT NULL DEFAULT 0 COMMENT '使用门槛分，0不限（最低消费）',
+  discount_rate     INT   NOT NULL DEFAULT 0 COMMENT '折扣券折扣率百分比（85=八五折）；满减券为0',
+  max_deduct_amount BIGINT NOT NULL DEFAULT 0 COMMENT '最高抵扣分，0不限',
   total_count INT         NOT NULL DEFAULT 0 COMMENT '发行量，0不限',
   taken_count INT         NOT NULL DEFAULT 0 COMMENT '已领取量',
   expire_time DATETIME    NOT NULL,
@@ -62,8 +65,11 @@ CREATE TABLE IF NOT EXISTS user_coupon (
   user_id      BIGINT      NOT NULL,
   coupon_id    BIGINT      NOT NULL,
   name         VARCHAR(64) NOT NULL COMMENT '快照',
-  face_amount  BIGINT      NOT NULL COMMENT '快照',
+  type         VARCHAR(16) NOT NULL DEFAULT 'FULL_CUT' COMMENT '快照',
+  face_amount  BIGINT      NOT NULL DEFAULT 0 COMMENT '快照',
   min_amount   BIGINT      NOT NULL COMMENT '快照',
+  discount_rate     INT    NOT NULL DEFAULT 0 COMMENT '快照',
+  max_deduct_amount BIGINT NOT NULL DEFAULT 0 COMMENT '快照',
   status       TINYINT     NOT NULL DEFAULT 0 COMMENT '0未用 1已用 2失效',
   use_order_no VARCHAR(32)          COMMENT '核销支付单号',
   use_time     DATETIME,
@@ -183,3 +189,27 @@ CREATE TABLE IF NOT EXISTS channel_log (
   KEY idx_order (order_no),
   KEY idx_trace (trace_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='渠道调用日志';
+
+-- 12. 支付渠道配置：渠道商户密钥等敏感配置落库，改库即生效（服务侧缓存 TTL 30 秒），无需改 yml 重启。
+-- 生产建议对 config_json 做列级加密或接 KMS 后再写入。
+CREATE TABLE IF NOT EXISTS channel_config (
+  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  channel_code VARCHAR(32)  NOT NULL COMMENT '渠道编码：ANTOM 等（MOCK 联调渠道走 yml 不入库）',
+  enabled      TINYINT      NOT NULL DEFAULT 0 COMMENT '1启用 0停用',
+  config_json  TEXT         NOT NULL COMMENT '渠道自定义配置 JSON（字段由各渠道的 *Config record 定义）',
+  remark       VARCHAR(255)          COMMENT '备注',
+  create_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_channel (channel_code)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付渠道配置';
+
+-- Antom（支付宝国际）配置模板：填好密钥后把 enabled 置 1 即启用
+INSERT IGNORE INTO channel_config (channel_code, enabled, config_json, remark) VALUES
+('ANTOM', 0, JSON_OBJECT(
+  'gateway', 'https://globalapi.alipay.com',
+  'clientId', '',
+  'merchantPrivateKey', '',
+  'alipayPublicKey', '',
+  'baseUrl', 'http://localhost:8080',
+  'expiryMinutes', 10
+), 'Antom 支付宝国际，填好商户密钥后 enabled 置 1');

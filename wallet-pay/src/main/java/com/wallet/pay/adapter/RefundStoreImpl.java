@@ -1,5 +1,6 @@
 package com.wallet.pay.adapter;
 
+import lombok.AllArgsConstructor;
 import com.wallet.channel.enums.PayError;
 import com.wallet.channel.enums.RefundState;
 import com.wallet.channel.error.ChannelException;
@@ -14,13 +15,11 @@ import org.springframework.stereotype.Component;
  * 三方退款分段在分摊时已预建，refund_part_no 即内核的退款单号。
  */
 @Component
+@AllArgsConstructor
 public class RefundStoreImpl implements RefundStore {
 
     private final RefundPartMapper refundPartMapper;
 
-    public RefundStoreImpl(RefundPartMapper refundPartMapper) {
-        this.refundPartMapper = refundPartMapper;
-    }
 
     @Override
     public RefundInfo create(String outTradeNo, String refundOrderNo, long amount, String currency) {

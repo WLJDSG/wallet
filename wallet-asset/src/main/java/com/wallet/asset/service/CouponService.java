@@ -1,11 +1,13 @@
 package com.wallet.asset.service;
 
+import lombok.AllArgsConstructor;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.wallet.asset.entity.Coupon;
 import com.wallet.asset.entity.UserCoupon;
 import com.wallet.asset.error.AssetError;
 import com.wallet.asset.mapper.CouponMapper;
 import com.wallet.asset.mapper.UserCouponMapper;
+import com.wallet.asset.service.coupon.CouponRuleEngine;
 import com.wallet.common.error.BizException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +19,13 @@ import java.util.List;
  * 优惠券服务。领券 / 核销 / 返还全部条件更新（CAS）。
  */
 @Service
+@AllArgsConstructor
 public class CouponService {
 
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
+    private final CouponRuleEngine couponRuleEngine;
 
-    public CouponService(CouponMapper couponMapper, UserCouponMapper userCouponMapper) {
-        this.couponMapper = couponMapper;
-        this.userCouponMapper = userCouponMapper;
-    }
 
     /** 领券：模板未超发行量才成功。 */
     @Transactional
@@ -44,8 +44,11 @@ public class CouponService {
         userCoupon.setUserId(userId);
         userCoupon.setCouponId(couponId);
         userCoupon.setName(coupon.getName());
+        userCoupon.setType(coupon.getType());
         userCoupon.setFaceAmount(coupon.getFaceAmount());
         userCoupon.setMinAmount(coupon.getMinAmount());
+        userCoupon.setDiscountRate(coupon.getDiscountRate());
+        userCoupon.setMaxDeductAmount(coupon.getMaxDeductAmount());
         userCoupon.setStatus(0);
         userCoupon.setExpireTime(coupon.getExpireTime());
         userCoupon.setCreateTime(LocalDateTime.now());
@@ -53,8 +56,8 @@ public class CouponService {
         return userCoupon;
     }
 
-    /** 下单前校验券可用（归属/未用/未过期/满足门槛），返回用户券快照。 */
-    public UserCoupon checkUsable(Long userId, Long userCouponId, long orderAmount) {
+    /** 下单前校验券可用（归属/未用/未过期），返回用户券快照；金额规则由规则引擎负责。 */
+    public UserCoupon checkUsable(Long userId, Long userCouponId) {
         UserCoupon userCoupon = userCouponMapper.selectById(userCouponId);
         if (userCoupon == null || !userCoupon.getUserId().equals(userId)) {
             throw new BizException(AssetError.COUPON_NOT_OWNED, "userCouponId=" + userCouponId);
@@ -65,11 +68,16 @@ public class CouponService {
         if (userCoupon.getExpireTime().isBefore(LocalDateTime.now())) {
             throw new BizException(AssetError.COUPON_EXPIRED, "userCouponId=" + userCouponId);
         }
-        if (userCoupon.getMinAmount() > orderAmount) {
-            throw new BizException(AssetError.COUPON_NOT_MATCH,
-                "门槛 " + userCoupon.getMinAmount() + " > 订单金额 " + orderAmount);
-        }
         return userCoupon;
+    }
+
+    /**
+     * 校验券可用并经规则引擎计算应抵扣额（单位分）：
+     * 满减=面额、折扣=按折扣率、统一受最低消费/最高抵扣/不超订单额约束。
+     */
+    public long evaluateDeduct(Long userId, Long userCouponId, long orderAmount) {
+        UserCoupon userCoupon = checkUsable(userId, userCouponId);
+        return couponRuleEngine.calcDeduct(userCoupon, orderAmount);
     }
 
     /** 核销（条件更新：未使用且未过期才成功）。 */

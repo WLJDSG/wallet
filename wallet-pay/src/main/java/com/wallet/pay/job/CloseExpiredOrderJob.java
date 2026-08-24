@@ -5,6 +5,7 @@ import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.mapper.PayOrderMapper;
 import com.wallet.pay.service.PayService;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@AllArgsConstructor
 public class CloseExpiredOrderJob {
 
     private static final int BATCH = 100;
@@ -25,10 +27,6 @@ public class CloseExpiredOrderJob {
     private final PayOrderMapper payOrderMapper;
     private final PayService payService;
 
-    public CloseExpiredOrderJob(PayOrderMapper payOrderMapper, PayService payService) {
-        this.payOrderMapper = payOrderMapper;
-        this.payService = payService;
-    }
 
     @XxlJob("closeExpiredOrders")
     public void scanExpired() {

@@ -2,6 +2,7 @@ package com.wallet.pay.adapter;
 
 import com.wallet.channel.spi.PayListener;
 import com.wallet.pay.service.OrderFinisher;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -13,13 +14,11 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@AllArgsConstructor
 public class PayListenerImpl implements PayListener {
 
     private final OrderFinisher orderFinisher;
 
-    public PayListenerImpl(OrderFinisher orderFinisher) {
-        this.orderFinisher = orderFinisher;
-    }
 
     @Override
     public void onPaySuccess(String channelCode, String orderNo, String outTradeNo) {

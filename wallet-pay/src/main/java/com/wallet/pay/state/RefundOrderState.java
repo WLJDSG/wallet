@@ -1,8 +1,11 @@
 package com.wallet.pay.state;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 退款主单状态（refund_order.state，DB 存 name()）。
  */
+@Schema(description = "退款主单状态")
 public enum RefundOrderState {
 
     /** 已创建，退款处理中 */

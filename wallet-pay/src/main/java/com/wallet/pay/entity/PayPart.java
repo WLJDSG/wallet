@@ -1,5 +1,6 @@
 package com.wallet.pay.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wallet.pay.state.PartState;
 import com.wallet.pay.enums.PayType;
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -13,24 +14,41 @@ import java.time.LocalDateTime;
  * 三方段的 part_no 即渠道交易号 outTradeNo。
  */
 @TableName("pay_part")
+@Schema(description = "支付分段")
 public class PayPart {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键")
     private Long id;
+    @Schema(description = "分段号（三方段即渠道 outTradeNo）")
     private String partNo;
+    @Schema(description = "所属支付单号")
     private String orderNo;
+    @Schema(description = "用户ID")
     private Long userId;
+    @Schema(description = "分段类型")
     private PayType payType;
+    @Schema(description = "本段抵扣金额，单位分")
     private Long amount;
+    @Schema(description = "积分段：消耗积分数")
     private Long pointCount;
+    @Schema(description = "券段：用户券 ID")
     private Long userCouponId;
+    @Schema(description = "三方段：渠道编码")
     private String channelCode;
+    @Schema(description = "三方段：渠道侧交易号")
     private String thirdNo;
+    @Schema(description = "三方段：渠道支付参数")
     private String channelPayload;
+    @Schema(description = "分段状态")
     private PartState state;
+    @Schema(description = "本段已退金额，单位分")
     private Long refundedAmount;
+    @Schema(description = "支付完成时间")
     private LocalDateTime payTime;
+    @Schema(description = "创建时间")
     private LocalDateTime createTime;
+    @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
     public Long getId() {

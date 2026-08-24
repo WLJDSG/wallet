@@ -1,5 +1,6 @@
 package com.wallet.asset.service;
 
+import lombok.AllArgsConstructor;
 import com.wallet.asset.entity.PointLog;
 import com.wallet.asset.error.AssetError;
 import com.wallet.asset.mapper.AccountMapper;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>变动类型：ADD 发放 / PAY 支付扣减 / ROLLBACK 支付回滚 / REFUND 退款返还。</p>
  */
 @Service
+@AllArgsConstructor
 public class PointService {
 
     public static final String TYPE_ADD = "ADD";
@@ -24,10 +26,6 @@ public class PointService {
     private final AccountMapper accountMapper;
     private final PointLogMapper pointLogMapper;
 
-    public PointService(AccountMapper accountMapper, PointLogMapper pointLogMapper) {
-        this.accountMapper = accountMapper;
-        this.pointLogMapper = pointLogMapper;
-    }
 
     /** 发放积分。 */
     @Transactional

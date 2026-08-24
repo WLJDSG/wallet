@@ -1,9 +1,12 @@
 package com.wallet.pay.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 支付分段类型。DB 存 name()（VARCHAR），JSON 出入参亦为 name()——
  * 入参大小写不敏感（JacksonConfig），非法值直接 400。
  */
+@Schema(description = "支付分段类型")
 public enum PayType {
 
     /** 优惠券抵扣段（不折现，退款时仅按规则返还） */

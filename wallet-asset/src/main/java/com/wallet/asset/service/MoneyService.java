@@ -1,5 +1,6 @@
 package com.wallet.asset.service;
 
+import lombok.AllArgsConstructor;
 import com.wallet.asset.entity.MoneyLog;
 import com.wallet.asset.error.AssetError;
 import com.wallet.asset.mapper.AccountMapper;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>变动类型：RECHARGE 充值 / PAY 支付扣减 / ROLLBACK 支付回滚 / REFUND 退款返还。</p>
  */
 @Service
+@AllArgsConstructor
 public class MoneyService {
 
     public static final String TYPE_RECHARGE = "RECHARGE";
@@ -27,10 +29,6 @@ public class MoneyService {
     private final AccountMapper accountMapper;
     private final MoneyLogMapper moneyLogMapper;
 
-    public MoneyService(AccountMapper accountMapper, MoneyLogMapper moneyLogMapper) {
-        this.accountMapper = accountMapper;
-        this.moneyLogMapper = moneyLogMapper;
-    }
 
     /** 充值（模拟入金）。bizNo 用充值流水号。 */
     @Transactional

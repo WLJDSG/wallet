@@ -1,5 +1,6 @@
 package com.wallet.pay.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wallet.pay.state.RefundOrderState;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -11,20 +12,33 @@ import java.time.LocalDateTime;
  * 退款主单。
  */
 @TableName("refund_order")
+@Schema(description = "退款主单")
 public class RefundOrder {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键")
     private Long id;
+    @Schema(description = "退款单号")
     private String refundNo;
+    @Schema(description = "原支付单号")
     private String orderNo;
+    @Schema(description = "用户ID")
     private Long userId;
+    @Schema(description = "申请退款总额，单位分")
     private Long refundAmount;
+    @Schema(description = "退还积分数")
     private Long refundPoint;
+    @Schema(description = "是否返还券：1 是 0 否")
     private Integer couponBack;
+    @Schema(description = "退款单状态")
     private RefundOrderState state;
+    @Schema(description = "退款原因")
     private String reason;
+    @Schema(description = "完成时间")
     private LocalDateTime finishTime;
+    @Schema(description = "创建时间")
     private LocalDateTime createTime;
+    @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
     public Long getId() {

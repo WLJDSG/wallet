@@ -3,6 +3,7 @@ package com.wallet.pay.mock;
 import com.wallet.common.trace.TraceIds;
 import com.wallet.pay.config.MockProperties;
 import com.wallet.pay.service.PayService;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Component
+@AllArgsConstructor
 public class MockNotifyService {
 
     private static final ScheduledExecutorService SCHEDULER =
@@ -33,10 +35,6 @@ public class MockNotifyService {
     // PayService 依赖本类（下单后注册自动回调），用 ObjectProvider 延迟解析避免循环依赖
     private final ObjectProvider<PayService> payService;
 
-    public MockNotifyService(MockProperties props, ObjectProvider<PayService> payService) {
-        this.props = props;
-        this.payService = payService;
-    }
 
     public void scheduleAutoNotify(String orderNo, String partNo) {
         if (props.getNotifySeconds() <= 0) {

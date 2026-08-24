@@ -1,5 +1,6 @@
 package com.wallet.pay.adapter;
 
+import lombok.AllArgsConstructor;
 import com.wallet.channel.enums.PayError;
 import com.wallet.channel.enums.PayState;
 import com.wallet.channel.error.ChannelException;
@@ -17,13 +18,11 @@ import org.springframework.stereotype.Component;
  * 一个支付单至多一个 CHANNEL 分段，part_no 即渠道交易号 outTradeNo。
  */
 @Component
+@AllArgsConstructor
 public class TradeStoreImpl implements TradeStore {
 
     private final PayPartMapper payPartMapper;
 
-    public TradeStoreImpl(PayPartMapper payPartMapper) {
-        this.payPartMapper = payPartMapper;
-    }
 
     /** 三方分段在创建支付单时已预建，这里直接返回既有分段 */
     @Override
