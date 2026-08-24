@@ -1,7 +1,10 @@
 # 监控与日志级别。
-# /actuator/health 健康检查、/actuator/prometheus 供 Prometheus 抓取
+# actuator 走独立管理端口 9080，与业务端口 8080 隔离：
+# 对外网关/LB 只暴露 8080，监控端点天然不可达，Prometheus/K8s 探针走内网 9080
 # （JVM/CPU/GC 自动上报；QPS/RT 看 http_server_requests_seconds 指标；Grafana 面板服务端配）
 management:
+  server:
+    port: 9080
   endpoints:
     web:
       exposure:

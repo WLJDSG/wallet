@@ -16,6 +16,8 @@ public class PayOrder {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String orderNo;
+    /** 来源商城/接入方（多商城预留，缺省 DEFAULT） */
+    private String appId;
     private String bizOrderNo;
     private Long userId;
     private Long totalAmount;
@@ -44,6 +46,14 @@ public class PayOrder {
 
     public void setOrderNo(String orderNo) {
         this.orderNo = orderNo;
+    }
+
+    public String getAppId() {
+        return appId;
+    }
+
+    public void setAppId(String appId) {
+        this.appId = appId;
     }
 
     public String getBizOrderNo() {

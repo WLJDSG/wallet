@@ -23,6 +23,14 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
             .last("LIMIT 1"));
     }
 
+    /** 同接入方的业务单号查既有支付单（建单幂等用，uk_app_biz 唯一索引保证至多一条） */
+    default PayOrder findByAppAndBizOrderNo(String appId, String bizOrderNo) {
+        return selectOne(new LambdaQueryWrapper<PayOrder>()
+            .eq(PayOrder::getAppId, appId)
+            .eq(PayOrder::getBizOrderNo, bizOrderNo)
+            .last("LIMIT 1"));
+    }
+
     /** 超时关单任务扫描：INIT/PAYING 且已过期 */
     default List<PayOrder> findExpired(LocalDateTime now, int limit) {
         return selectList(new LambdaQueryWrapper<PayOrder>()

@@ -2,6 +2,7 @@ package com.wallet.pay.adapter;
 
 import com.wallet.channel.model.CallLog;
 import com.wallet.channel.spi.CallLogWriter;
+import com.wallet.common.trace.TraceIds;
 import com.wallet.pay.entity.ChannelLog;
 import com.wallet.pay.mapper.ChannelLogMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +36,7 @@ public class CallLogWriterImpl implements CallLogWriter {
         row.setResponseJson(toJson(log.response()));
         row.setErrorMsg(log.error());
         row.setCostMs((int) log.costMs());
+        row.setTraceId(TraceIds.current());
         row.setCreateTime(LocalDateTime.now());
         channelLogMapper.insert(row);
     }

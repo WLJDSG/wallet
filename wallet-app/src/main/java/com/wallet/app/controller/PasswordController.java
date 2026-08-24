@@ -3,6 +3,8 @@ package com.wallet.app.controller;
 import com.wallet.app.model.PasswordSetReq;
 import com.wallet.app.model.PasswordVerifyReq;
 import com.wallet.app.model.VerifyResult;
+import com.wallet.app.limit.LimitDim;
+import com.wallet.app.limit.RateLimit;
 import com.wallet.asset.service.password.PasswordService;
 import com.wallet.common.result.ApiResult;
 import jakarta.validation.Valid;
@@ -31,6 +33,8 @@ public class PasswordController {
         return ApiResult.ok();
     }
 
+    @RateLimit(dim = LimitDim.USER, permits = 3)  // 防密码爆破：每用户每秒 3 次
+    @RateLimit(dim = LimitDim.IP, permits = 10)
     @PostMapping("/verify")
     public ApiResult<VerifyResult> verify(@RequestHeader("X-Uid") Long userId,
         @Valid @RequestBody PasswordVerifyReq req) {

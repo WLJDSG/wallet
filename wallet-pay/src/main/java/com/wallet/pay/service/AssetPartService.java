@@ -3,6 +3,8 @@ package com.wallet.pay.service;
 import com.wallet.asset.service.CouponService;
 import com.wallet.asset.service.MoneyService;
 import com.wallet.asset.service.PointService;
+import com.wallet.common.error.BizException;
+import com.wallet.pay.error.OrderError;
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.entity.PayPart;
 import com.wallet.pay.enums.PayType;
@@ -137,6 +139,10 @@ public class AssetPartService {
             }
             refundOrderMapper.updateCouponBack(refundNo, restored ? 1 : 0);
         }
-        payOrderMapper.reduceRefundable(orderNo, totalRefund);
+        // 资金 CAS 必须校验影响行数：可退不足说明并发前提被破坏，抛异常回滚整个退款事务
+        if (payOrderMapper.reduceRefundable(orderNo, totalRefund) != 1) {
+            throw new BizException(OrderError.REFUND_TOO_MUCH,
+                "可退金额不足（并发校验），orderNo=" + orderNo + ", 申请=" + totalRefund);
+        }
     }
 }

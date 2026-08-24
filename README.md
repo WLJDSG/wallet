@@ -28,7 +28,9 @@
 | 数据库 | MySQL 8.0+ | 金额一律 BIGINT 分；状态存枚举 name() |
 | 接口文档 | springdoc-openapi 2.8（Swagger 3 / OpenAPI 3） | `/swagger-ui.html` |
 | 参数校验 | spring-boot-starter-validation | `@Valid` + 全局异常映射 |
-| 监控 | Actuator + Micrometer Prometheus | `/actuator/health`、`/actuator/prometheus` |
+| 限流 | Redisson 分布式固定窗口 | 四维：GLOBAL 应用兜底/API 接口/IP/USER；配置全局默认 + `@RateLimit` 注解接口覆盖，超限 429 |
+| 渠道配置 | channel_config 表 | 商户密钥落库改库即生效（缓存 30s），不写 yml |
+| 监控 | Actuator + Micrometer Prometheus | 独立管理端口 9080：`:9080/actuator/health`、`:9080/actuator/prometheus` |
 | 测试 | JUnit 5 · Mockito · Testcontainers | Testcontainers 无 Docker 自动跳过 |
 | 规划内 | RabbitMQ 3.13+ · Elasticsearch 8.x | 按需引入，尚未添加依赖 |
 
@@ -67,7 +69,7 @@ wallet（父 pom：版本管理、模块聚合）
     ├── controller/    REST 接口（入参 *Req + @Valid）
     ├── handler/       GlobalExceptionHandler 全局异常 → 统一返回体
     ├── filter/        TraceIdFilter 链路追踪
-    ├── config/        RedisConfig / MybatisPlusConfig / JacksonConfig / CorsConfig /
+    ├── config/        RedisConfig / MybatisPlusConfig / JacksonConfig / WebConfig（跨域+限流）/
     │                  XxlJobConfig / ChannelConfig（渠道内核装配）
     └── resources/     application.yml + config/*.yml + logback-spring.xml
 ```
@@ -102,6 +104,7 @@ SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `20
 ```bash
 mysql -uroot -e "CREATE DATABASE IF NOT EXISTS wallet DEFAULT CHARSET utf8mb4"
 mysql -uroot wallet < sql/2026-08-24-钱包建表.sql
+mysql -uroot wallet < sql/2026-08-24-渠道配置表.sql       # 渠道配置表（含 Antom 模板行）
 mysql -uroot wallet < sql/2026-08-24-优惠券种子数据.sql   # 可选：两张联调用券模板
 ```
 
@@ -116,7 +119,7 @@ mysql -uroot wallet < sql/2026-08-24-优惠券种子数据.sql   # 可选：两�
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn -pl wallet-app -am spring-boot:run
 ```
 
-验证：`curl http://localhost:8080/actuator/health` 返回 `{"status":"UP"}`；
+验证：`curl http://localhost:9080/actuator/health` 返回 `{"status":"UP"}`（actuator 走独立管理端口 9080）；
 Swagger 文档：<http://localhost:8080/swagger-ui.html>。
 
 ### 4. 联调走一遍完整支付（mock 渠道）
@@ -182,8 +185,10 @@ resources/
     └── monitor.yml      # 监控端点暴露 + 日志级别
 ```
 
-生产要点：`wallet.mock.enabled=false` 关闭 mock 渠道；`xxl.job.enabled=true` 并配好调度中心地址；
-CORS 白名单收紧（`CorsConfig`）；数据源/Redis 地址用 prod profile 覆盖。
+生产要点：`wallet.mock.enabled=false` 关闭 mock 渠道；`xxl.job.enabled=true` 并配好调度中心地址
+（不开则超时关单不跑、PAYING 订单不会自动关闭/补单，启动时会打 WARN 提醒）；
+CORS 白名单收紧（`WebConfig`）；actuator 已默认走独立管理端口 9080——对外网关/LB 只暴露 8080，
+监控端点仅内网可达；数据源/Redis 地址与凭据用 prod profile 覆盖；接入真实用户体系替换 `X-Uid` 头。
 
 ## 核心设计
 
@@ -377,6 +382,7 @@ erDiagram
     pay_order {
         bigint id PK
         varchar order_no UK "支付单号"
+        varchar app_id "来源商城 UK(app_id+biz_order_no)"
         varchar biz_order_no "外部业务单号"
         bigint user_id
         bigint total_amount "应付总额(分)"
@@ -437,8 +443,20 @@ erDiagram
 - 扣余额：`UPDATE wallet_account SET money = money - x WHERE user_id=? AND money >= x`（影响行数=1 才算成功）
 - 核销券：仅当属于该用户、未使用、未过期时成功
 - 状态推进：`UPDATE ... SET state=to WHERE 单号=? AND state=from`
+- 建单幂等：`(app_id, biz_order_no)` 唯一索引，同接入方同业务单号重复创建返回既有支付单
+  （金额不一致直接拒绝）；多商城接入时 app_id 即来源商城（当前默认 DEFAULT）
 - 资产流水按 `biz_no + type` 唯一索引幂等（重复写入静默忽略）
 - 以上全部用 MyBatis-Plus `LambdaUpdateWrapper` 表达（列运算用 `setSql("col = col - {0}", x)` 参数绑定）
+
+### 崩溃恢复与最终一致
+
+内核不开跨渠道调用的长事务（渠道 HTTP 不在任何事务内），一致性靠 **CAS + 补偿 + 超时关单查证** 收敛：
+
+- 任何步骤间崩溃，订单都停留在可判定状态（INIT/PAYING + 分段状态组合）；
+- `closeOrFinish`（取消/超时关单共用）**先尝试结单再考虑关闭**：分段已全部 SUCCESS（含"渠道款已实收
+  但结单前崩溃"的窗口）一律补单完成，绝不回滚资产/关单——否则渠道款不退不入账，产生资损；
+- 未支付的订单：查证渠道 → 关渠道交易 → 补偿返还资产段（幂等流水保证重放安全）→ 关单；
+- 资金 CAS（扣可退、扣余额等）全部校验影响行数，失败即抛异常回滚所在事务。
 
 ### 领域事件
 `OrderPaidEvent` / `OrderClosedEvent` / `RefundSuccessEvent` 在 CAS 推进成功处发布（至多一次）。
@@ -461,7 +479,7 @@ BCrypt 慢哈希（强度 12）+ 连续错 5 次 / 当日 10 次锁 10 分钟 +
 | POST `/api/asset/coupon/take` | 领券 `{couponId}` |
 | POST `/api/password/set` | 设置/重置支付密码 `{password, oldPassword?}` |
 | POST `/api/password/verify` | 校验密码签发票据 `{password, orderNo, amount}` |
-| POST `/api/pay/create` | 创建拆分支付单 `{bizOrderNo, totalAmount, currency, parts[]}` |
+| POST `/api/pay/create` | 创建拆分支付单 `{bizOrderNo, totalAmount, currency, parts[]}`（可带 `X-App-Id` 标识来源商城；同 app 同 bizOrderNo 幂等） |
 | POST `/api/pay/submit` | 提交支付 `{orderNo, ticket?}`（含资产段必须带票据） |
 | POST `/api/pay/callback/{channel}/{orderNo}/{partNo}` | 渠道异步回调（验签在渠道实现内） |
 | GET `/api/pay/order/{orderNo}` | 查主单+分段 |
@@ -472,6 +490,10 @@ BCrypt 慢哈希（强度 12）+ 连续错 5 次 / 当日 10 次锁 10 分钟 +
 
 统一返回体：`{code, message, data, traceId, timestamp, success}`（`code="0"` 即成功）。
 错误码见各模块 `error/` 包；参数校验失败统一 `BAD_PARAM`，锁冲突统一 `LOCK_FAILED`。
+
+HTTP 状态码约定（影响调用方重试语义，尤其渠道回调）：
+**业务失败 200**（code 区分，重试无意义）· **参数/报文错 400** · **锁冲突 429** · **系统异常 500**
+——渠道对非 2xx 回调应答会重试，锁竞争/瞬时故障不丢通知。
 
 ## 开发约定
 
@@ -486,6 +508,9 @@ BCrypt 慢哈希（强度 12）+ 连续错 5 次 / 当日 10 次锁 10 分钟 +
 - **事务与锁**：`@Transactional`/`@Lock4j` 方法放独立 Bean 经代理调用，严禁类内 `this.` 自调用。
 - **命名**：`@ConfigurationProperties` 类后缀 `*Properties`；XXL-Job 任务类放 `job/` 后缀 `*Job`；
   mock 相关放 `mock/`；entity 手写 getter/setter，model 用 record；金额一律 long（分）。
+- **限流**：全局默认在 `wallet.rate-limit.*`（GLOBAL 应用兜底/IP/USER），
+  接口按维度收紧用 `@RateLimit(dim = ..., permits = ...)` 可重复注解（API 维度只能注解配）；
+  敏感接口示例见 `PasswordController.verify`（防爆破）与 `PayController.submit`。
 - **TraceId**：HTTP 由 `TraceIdFilter` 自动处理；异步/定时任务入口 `TraceIds.seed()` 播种、finally 里 `clear()`。
 
 ## 测试
@@ -500,8 +525,10 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test
 
 ## 监控
 
-- 健康检查：`GET /actuator/health`
-- Prometheus 抓取：`GET /actuator/prometheus`（已打 `application=wallet` 标签）
+- actuator 走**独立管理端口 9080**（`management.server.port`），与业务端口 8080 隔离，
+  对外只暴露 8080 时监控端点天然不可达。
+- 健康检查：`GET :9080/actuator/health`
+- Prometheus 抓取：`GET :9080/actuator/prometheus`（已打 `application=wallet` 标签）
   - JVM/CPU/GC：自动上报（`jvm_*`、`system_cpu_*`、`process_*`）
   - QPS/RT：`http_server_requests_seconds_count / _sum / _max`
 - Grafana：导入 "JVM (Micrometer)" 4701 号面板 + 按 `http_server_requests_seconds` 建 QPS/RT 图。
@@ -513,5 +540,7 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test
 在 `wallet-pay` 新建包实现 `com.wallet.channel.action.*` 动作接口
 （`PayAction` 必选，`QueryAction`/`RefundAction`/`CancelAction`/`CallbackAction`/`ConfirmAction` 按渠道能力选），
 Spring 会自动收集所有 `Channel` Bean 注册进 `ChannelKit`（见 `ChannelConfig`）。
-参考 `antom/` 目录的 Antom（支付宝国际）渠道示范：配好 `wallet.antom.*` 密钥并置 `enabled=true` 即启用。
+参考 `antom/` 目录的 Antom（支付宝国际）渠道示范：商户配置在 `channel_config` 表
+（`sql/2026-08-24-渠道配置表.sql` 有模板行），填好 config_json 密钥、enabled 置 1 即启用，
+改库 30 秒内生效无需重启；测试/生产环境切换改 config_json 里的 gateway（沙箱地址）即可。
 内核在构建期校验渠道动作完整性，配置错误启动即失败。

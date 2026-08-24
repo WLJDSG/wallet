@@ -4,7 +4,6 @@ import com.wallet.asset.config.PasswordProperties;
 import com.wallet.asset.entity.PayPassword;
 import com.wallet.asset.error.AssetError;
 import com.wallet.common.error.BizException;
-import com.wallet.common.util.IdMaker;
 import org.redisson.api.RBucket;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RedissonClient;
@@ -15,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
  * 支付密码服务。
@@ -80,7 +80,9 @@ public class PasswordService {
             throw new BizException(AssetError.PASSWORD_WRONG, "userId=" + userId);
         }
         clearFail(userId);
-        String ticket = IdMaker.next("TK");
+        // 票据是安全凭证，必须高熵不可预测（UUID 底层 SecureRandom）；
+        // 不能用 IdMaker（时间戳+4位随机，可被窗口内枚举）
+        String ticket = "TK" + UUID.randomUUID().toString().replace("-", "");
         String value = userId + ":" + orderNo + ":" + amount;
         redisson.getBucket(ticketKey(ticket))
             .set(value, Duration.ofSeconds(props.getTicketTtlSeconds()));

@@ -42,3 +42,12 @@ xxl:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# 多维分布式限流（WebConfig 注册，固定窗口多实例共享计数）；网关已有限流时置 false
+# 全局默认在这里配，接口级用 @RateLimit 注解按维度覆盖（API 维度只能注解配）
+wallet:
+  rate-limit:
+    enabled: true
+    qps-global: 1000    # 应用级兜底：整个服务每秒总请求（<=0 关闭该维度）
+    qps-per-ip: 50      # 每客户端 IP 每秒请求
+    qps-per-user: 20    # 每用户（X-Uid）每秒请求

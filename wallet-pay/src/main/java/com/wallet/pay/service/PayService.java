@@ -36,6 +36,7 @@ import com.wallet.pay.state.OrderStateMachine;
 import com.wallet.pay.state.PartStateMachine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,9 +87,17 @@ public class PayService {
         this.orderFinisher = orderFinisher;
     }
 
-    /** 创建支付单：校验分段合法性，落主单 + 全部分段（INIT）。不持锁（orderNo 新生成，靠唯一索引防重）。 */
+    /**
+     * 创建支付单：校验分段合法性，落主单 + 全部分段（INIT）。不持锁——
+     * 建单幂等靠 (app_id, biz_order_no) 唯一索引：同接入方同业务单号重复创建返回既有支付单
+     * （金额不一致视为调用方错误直接拒绝）。
+     */
     @Transactional
-    public CreateOrderResult create(Long userId, CreateOrderCmd cmd) {
+    public CreateOrderResult create(String appId, Long userId, CreateOrderCmd cmd) {
+        PayOrder exist = payOrderMapper.findByAppAndBizOrderNo(appId, cmd.bizOrderNo());
+        if (exist != null) {
+            return existingOrder(exist, cmd);
+        }
         long sum = 0;
         int channelCount = 0;
         for (PartItem item : cmd.parts()) {
@@ -109,6 +118,7 @@ public class PayService {
         LocalDateTime now = LocalDateTime.now();
         PayOrder order = new PayOrder();
         order.setOrderNo(orderNo);
+        order.setAppId(appId);
         order.setBizOrderNo(cmd.bizOrderNo());
         order.setUserId(userId);
         order.setTotalAmount(cmd.totalAmount());
@@ -119,7 +129,12 @@ public class PayService {
         order.setRefundedAmount(0L);
         order.setCreateTime(now);
         order.setUpdateTime(now);
-        payOrderMapper.insert(order);
+        try {
+            payOrderMapper.insert(order);
+        } catch (DuplicateKeyException e) {
+            // 并发重复建单：唯一索引兜底，返回先到的那单（分段尚未插入，直接返回安全）
+            return existingOrder(payOrderMapper.findByAppAndBizOrderNo(appId, cmd.bizOrderNo()), cmd);
+        }
 
         for (PartItem item : cmd.parts()) {
             PayPart part = new PayPart();
@@ -138,6 +153,18 @@ public class PayService {
             payPartMapper.insert(part);
         }
         return new CreateOrderResult(orderNo, order.getExpireTime());
+    }
+
+    /** 建单幂等命中：金额一致返回既有单，不一致视为调用方用错单号 */
+    private CreateOrderResult existingOrder(PayOrder exist, CreateOrderCmd cmd) {
+        if (exist.getTotalAmount() != cmd.totalAmount()) {
+            throw new BizException(OrderError.AMOUNT_NOT_MATCH,
+                "业务单号已存在且金额不一致, bizOrderNo=" + cmd.bizOrderNo()
+                    + ", 已有=" + exist.getTotalAmount() + ", 本次=" + cmd.totalAmount());
+        }
+        log.info("建单幂等命中, appId={}, bizOrderNo={}, orderNo={}",
+            exist.getAppId(), cmd.bizOrderNo(), exist.getOrderNo());
+        return new CreateOrderResult(exist.getOrderNo(), exist.getExpireTime());
     }
 
     private void validatePart(Long userId, PartItem item, long totalAmount) {
@@ -331,27 +358,47 @@ public class PayService {
         if (state == OrderState.CLOSED || state == OrderState.FAIL) {
             return state.name();
         }
-        closeOrFinish(order);
-        return "CLOSED";
+        OrderState result = closeOrFinish(order);
+        if (result == OrderState.SUCCESS) {
+            // 取消时发现分段/渠道已实付，已补单完成，不能关
+            throw new BizException(OrderError.ORDER_PAID, orderNo);
+        }
+        return result.name();
     }
 
     /**
-     * 关闭或补单（取消与超时关单共用）：先查证三方，已支付→补单完成；未支付→关渠道+补偿资产段+关单。
+     * 关闭或补单（取消与超时关单共用）。
+     *
+     * <p><b>必须先尝试结单再考虑关闭</b>：崩溃恢复窗口下可能出现"分段已全部 SUCCESS
+     * 但主单停在 PAYING"（回调把渠道段推成功后、结单前进程崩溃）。此时渠道款已实收，
+     * 若直接走回滚+关单，渠道那笔钱既不退也不入账——资损。所以进来先补单，
+     * 补单成功直接返回 SUCCESS。</p>
+     *
+     * @return 处理后的主单终态：SUCCESS（补单完成）或 CLOSED（已关闭）
      */
-    public void closeOrFinish(PayOrder order) {
+    public OrderState closeOrFinish(PayOrder order) {
         String orderNo = order.getOrderNo();
+
+        // 1. 先尝试结单（幂等，分段未全成功时无副作用）
+        orderFinisher.finishIfAllSuccess(orderNo);
+        PayOrder fresh = payOrderMapper.findByOrderNo(orderNo);
+        if (fresh.getState() == OrderState.SUCCESS) {
+            log.info("关单时发现分段已全部成功，补单完成, orderNo={}", orderNo);
+            return OrderState.SUCCESS;
+        }
+
         List<PayPart> parts = payPartMapper.findByOrderNo(orderNo);
         PayPart channelPart = channelPartOf(parts);
 
         if (channelPart != null && !channelPart.getState().isTerminal()) {
-            // 查证渠道是否已支付（内核在已支付时会推进分段 SUCCESS 并触发监听）
+            // 2. 查证渠道是否已支付（内核在已支付时会推进分段 SUCCESS 并触发监听）
             boolean channelPaid = queryChannelPaid(channelPart);
             if (channelPaid) {
                 orderFinisher.finishIfAllSuccess(orderNo);
-                log.info("取消时发现渠道已支付，走补单完成, orderNo={}", orderNo);
-                return;
+                log.info("关单时查证渠道已支付，走补单完成, orderNo={}", orderNo);
+                return OrderState.SUCCESS;
             }
-            // 未支付：关闭渠道交易（内核会查证并关渠道、本地分段推进 CLOSED）
+            // 3. 未支付：关闭渠道交易（内核会查证并关渠道、本地分段推进 CLOSED）
             try {
                 channelKit.flow().cancel(channelPart.getChannelCode(), orderNo, channelPart.getPartNo());
             } catch (ChannelException e) {
@@ -359,23 +406,24 @@ public class PayService {
                     // 关闭时渠道侧已支付：补单完成
                     payPartMapper.changeState(channelPart.getPartNo(), channelPart.getState(), PartState.SUCCESS);
                     orderFinisher.finishIfAllSuccess(orderNo);
-                    return;
+                    return OrderState.SUCCESS;
                 }
                 log.warn("渠道关闭异常，继续本地关闭, orderNo={}, err={}", orderNo, e.getMessage());
                 payPartMapper.changeState(channelPart.getPartNo(), channelPart.getState(), PartState.CLOSED);
             }
         }
 
-        // 资产段补偿返还 + 其余未终态分段关闭
+        // 4. 资产段补偿返还 + 其余未终态分段关闭 + 主单关闭
         assetPartService.rollbackAssetParts(orderNo, order.getUserId());
         for (PayPart part : payPartMapper.findByOrderNo(orderNo)) {
             if (PartStateMachine.INSTANCE.canTransition(part.getState(), PartEvent.CLOSE)) {
                 payPartMapper.changeState(part.getPartNo(), part.getState(), PartState.CLOSED);
             }
         }
-        if (payOrderMapper.markClosed(orderNo, order.getState(), OrderState.CLOSED, LocalDateTime.now()) == 1) {
+        if (payOrderMapper.markClosed(orderNo, fresh.getState(), OrderState.CLOSED, LocalDateTime.now()) == 1) {
             events.publishEvent(new OrderClosedEvent(orderNo, order.getUserId()));
         }
+        return OrderState.CLOSED;
     }
 
     /**

@@ -1,5 +1,7 @@
 package com.wallet.app.controller;
 
+import com.wallet.app.limit.LimitDim;
+import com.wallet.app.limit.RateLimit;
 import com.wallet.app.model.CreateOrderReq;
 import com.wallet.app.model.SubmitReq;
 import com.wallet.common.result.ApiResult;
@@ -34,11 +36,14 @@ public class PayController {
     }
 
     @PostMapping("/create")
-    public ApiResult<CreateOrderResult> create(@RequestHeader("X-Uid") Long userId,
+    public ApiResult<CreateOrderResult> create(
+        @RequestHeader(value = "X-App-Id", defaultValue = "DEFAULT") String appId,
+        @RequestHeader("X-Uid") Long userId,
         @Valid @RequestBody CreateOrderReq req) {
-        return ApiResult.ok(payService.create(userId, req.toCmd()));
+        return ApiResult.ok(payService.create(appId, userId, req.toCmd()));
     }
 
+    @RateLimit(dim = LimitDim.USER, permits = 5)  // 每用户每秒 5 次提交
     @PostMapping("/submit")
     public ApiResult<SubmitResult> submit(@RequestHeader("X-Uid") Long userId,
         @Valid @RequestBody SubmitReq req) {

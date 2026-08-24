@@ -24,7 +24,7 @@ import com.wallet.pay.state.RefundOrderState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,10 +48,12 @@ public class RefundService {
     private final ChannelKit channelKit;
     private final ApplicationEventPublisher events;
     private final AssetPartService assetPartService;
+    private final TransactionTemplate transactionTemplate;
 
     public RefundService(RefundOrderMapper refundOrderMapper, RefundPartMapper refundPartMapper,
         PayOrderMapper payOrderMapper, PayPartMapper payPartMapper, ChannelKit channelKit,
-        ApplicationEventPublisher events, AssetPartService assetPartService) {
+        ApplicationEventPublisher events, AssetPartService assetPartService,
+        TransactionTemplate transactionTemplate) {
         this.refundOrderMapper = refundOrderMapper;
         this.refundPartMapper = refundPartMapper;
         this.payOrderMapper = payOrderMapper;
@@ -59,6 +61,7 @@ public class RefundService {
         this.channelKit = channelKit;
         this.events = events;
         this.assetPartService = assetPartService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /** 发起退款（持同一把支付单锁，与支付/回调互斥） */
@@ -89,41 +92,44 @@ public class RefundService {
         List<PayPart> parts = payPartMapper.findByOrderNo(orderNo);
         List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, amount);
 
-        // 落退款单 + 退款分段
+        // 落退款单 + 退款分段（一个事务：不留半截 INIT 退款单；渠道调用在事务外）
         String refundNo = IdMaker.next("R");
-        LocalDateTime now = LocalDateTime.now();
-        RefundOrder refundOrder = new RefundOrder();
-        refundOrder.setRefundNo(refundNo);
-        refundOrder.setOrderNo(orderNo);
-        refundOrder.setUserId(userId);
-        refundOrder.setRefundAmount(amount);
-        refundOrder.setRefundPoint(0L);
-        refundOrder.setCouponBack(0);
-        refundOrder.setState(RefundOrderState.INIT);
-        refundOrder.setReason(reason);
-        refundOrder.setCreateTime(now);
-        refundOrder.setUpdateTime(now);
-        refundOrderMapper.insert(refundOrder);
+        List<RefundEntry> entries = transactionTemplate.execute(status -> {
+            LocalDateTime now = LocalDateTime.now();
+            RefundOrder refundOrder = new RefundOrder();
+            refundOrder.setRefundNo(refundNo);
+            refundOrder.setOrderNo(orderNo);
+            refundOrder.setUserId(userId);
+            refundOrder.setRefundAmount(amount);
+            refundOrder.setRefundPoint(0L);
+            refundOrder.setCouponBack(0);
+            refundOrder.setState(RefundOrderState.INIT);
+            refundOrder.setReason(reason);
+            refundOrder.setCreateTime(now);
+            refundOrder.setUpdateTime(now);
+            refundOrderMapper.insert(refundOrder);
 
-        long refundPoint = 0;
-        List<RefundEntry> entries = new ArrayList<>();
-        for (RefundSplitter.Alloc alloc : allocs) {
-            String refundPartNo = IdMaker.next("RT");
-            RefundPart refundPart = new RefundPart();
-            refundPart.setRefundPartNo(refundPartNo);
-            refundPart.setRefundNo(refundNo);
-            refundPart.setPartNo(alloc.part().getPartNo());
-            refundPart.setPayType(alloc.part().getPayType());
-            refundPart.setAmount(alloc.amount());
-            refundPart.setPointCount(alloc.pointCount());
-            refundPart.setState(RefundState.INIT);
-            refundPart.setCreateTime(now);
-            refundPart.setUpdateTime(now);
-            refundPartMapper.insert(refundPart);
-            refundPoint += alloc.pointCount();
-            entries.add(new RefundEntry(alloc, refundPartNo));
-        }
-        refundOrderMapper.updateRefundPoint(refundNo, refundPoint);
+            long refundPoint = 0;
+            List<RefundEntry> list = new ArrayList<>();
+            for (RefundSplitter.Alloc alloc : allocs) {
+                String refundPartNo = IdMaker.next("RT");
+                RefundPart refundPart = new RefundPart();
+                refundPart.setRefundPartNo(refundPartNo);
+                refundPart.setRefundNo(refundNo);
+                refundPart.setPartNo(alloc.part().getPartNo());
+                refundPart.setPayType(alloc.part().getPayType());
+                refundPart.setAmount(alloc.amount());
+                refundPart.setPointCount(alloc.pointCount());
+                refundPart.setState(RefundState.INIT);
+                refundPart.setCreateTime(now);
+                refundPart.setUpdateTime(now);
+                refundPartMapper.insert(refundPart);
+                refundPoint += alloc.pointCount();
+                list.add(new RefundEntry(alloc, refundPartNo));
+            }
+            refundOrderMapper.updateRefundPoint(refundNo, refundPoint);
+            return list;
+        });
 
         // 1. 先退三方
         RefundEntry channelEntry = findChannel(entries);

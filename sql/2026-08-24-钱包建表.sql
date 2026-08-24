@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS pay_password (
 CREATE TABLE IF NOT EXISTS pay_order (
   id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   order_no          VARCHAR(32) NOT NULL COMMENT '钱包支付单号',
+  app_id            VARCHAR(32) NOT NULL DEFAULT 'DEFAULT' COMMENT '来源商城/接入方（多商城预留）',
   biz_order_no      VARCHAR(64) NOT NULL COMMENT '外部业务单号',
   user_id           BIGINT      NOT NULL,
   total_amount      BIGINT      NOT NULL COMMENT '应付总额分 = sum(分段金额)',
@@ -102,7 +103,7 @@ CREATE TABLE IF NOT EXISTS pay_order (
   create_time       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_order (order_no),
-  KEY idx_biz (biz_order_no),
+  UNIQUE KEY uk_app_biz (app_id, biz_order_no) COMMENT '同接入方业务单号防重复建单',
   KEY idx_user (user_id, id),
   KEY idx_close (state, expire_time) COMMENT '关单任务扫描'
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付主单';
@@ -177,6 +178,8 @@ CREATE TABLE IF NOT EXISTS channel_log (
   response_json TEXT,
   error_msg     VARCHAR(500),
   cost_ms       INT         NOT NULL DEFAULT 0,
+  trace_id      VARCHAR(64)          COMMENT '链路追踪ID，与应用日志/响应头 X-Trace-Id 对应',
   create_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_order (order_no)
+  KEY idx_order (order_no),
+  KEY idx_trace (trace_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='渠道调用日志';

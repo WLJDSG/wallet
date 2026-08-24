@@ -2,11 +2,11 @@ package com.wallet.pay.antom;
 
 import com.alipay.global.api.AlipayClient;
 import com.alipay.global.api.DefaultAlipayClient;
-import com.alipay.global.api.model.ResultStatusType;
 import com.alipay.global.api.model.ams.Amount;
 import com.alipay.global.api.model.ams.Order;
 import com.alipay.global.api.model.ams.ProductCodeType;
 import com.alipay.global.api.model.ams.TransactionStatusType;
+import com.alipay.global.api.model.ResultStatusType;
 import com.alipay.global.api.request.ams.pay.AlipayPayQueryRequest;
 import com.alipay.global.api.request.ams.pay.AlipayPayRequest;
 import com.alipay.global.api.request.ams.pay.AlipayRefundRequest;
@@ -30,11 +30,10 @@ import com.wallet.channel.model.QueryRequest;
 import com.wallet.channel.model.QueryResult;
 import com.wallet.channel.model.RefundResult;
 import com.wallet.channel.model.TradeInfo;
-import com.wallet.pay.config.AntomProperties;
-import lombok.extern.slf4j.Slf4j;
+import com.wallet.pay.service.ChannelConfigService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.ZoneOffset;
@@ -54,37 +53,39 @@ import java.time.format.DateTimeFormatter;
  *   <li>CANCEL：Antom 无远程关单接口，支付到点自动过期，本地直接返回 true。</li>
  * </ul>
  *
- * <p>需在 application.yml 配置 {@code wallet.antom.enabled=true} 及商户密钥，否则本渠道不注册。</p>
+ * <p><b>配置从 channel_config 表读取</b>（{@link AntomConfig}），不写 yml：
+ * 每次动作取当前配置（30 秒缓存），配置变更自动重建 SDK client；
+ * 未配置/停用时动作抛渠道异常，由编排层按渠道失败补偿。</p>
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "wallet.antom", name = "enabled", havingValue = "true")
 public class AntomChannel implements PayAction, QueryAction, RefundAction, CancelAction, CallbackAction {
+
+    public static final String CHANNEL_CODE = "ANTOM";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final DateTimeFormatter ISO_8601 =
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
-    private final AntomProperties props;
-    private volatile AlipayClient client;
+    private final ChannelConfigService channelConfigs;
+    private volatile CachedClient cachedClient;
 
-    public AntomChannel(AntomProperties props) {
-        this.props = props;
-        if (props.getClientId() == null || props.getClientId().trim().isEmpty()
-            || props.getMerchantPrivateKey() == null || props.getMerchantPrivateKey().trim().isEmpty()
-            || props.getAlipayPublicKey() == null || props.getAlipayPublicKey().trim().isEmpty()) {
-            throw new IllegalStateException(
-                "wallet.antom.enabled=true 但 clientId/merchantPrivateKey/alipayPublicKey 未配置");
-        }
+    /** 按配置键缓存的 SDK client：channel_config 改密钥/网关后自动重建 */
+    private record CachedClient(String key, AlipayClient client) {
+    }
+
+    public AntomChannel(ChannelConfigService channelConfigs) {
+        this.channelConfigs = channelConfigs;
     }
 
     @Override
     public String code() {
-        return "ANTOM";
+        return CHANNEL_CODE;
     }
 
     @Override
     public Object pay(PayRequest request, TradeInfo trade) {
+        AntomConfig config = config();
         try {
             AlipayPayRequest payRequest = new AlipayPayRequest();
             payRequest.setProductCode(ProductCodeType.CASHIER_PAYMENT);
@@ -99,12 +100,12 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
             order.setOrderAmount(amount);
             payRequest.setOrder(order);
 
-            payRequest.setPaymentExpiryTime(expiryTime());
-            payRequest.setPaymentNotifyUrl(props.getBaseUrl()
+            payRequest.setPaymentExpiryTime(expiryTime(config));
+            payRequest.setPaymentNotifyUrl(config.baseUrl()
                 + "/api/pay/callback/ANTOM/" + request.orderNo() + "/" + trade.outTradeNo());
-            payRequest.setPaymentRedirectUrl(props.getBaseUrl() + "/wallet/pay/result/" + request.orderNo());
+            payRequest.setPaymentRedirectUrl(config.baseUrl() + "/wallet/pay/result/" + request.orderNo());
 
-            AlipayPayResponse response = client().execute(payRequest);
+            AlipayPayResponse response = client(config).execute(payRequest);
             if (!ResultStatusType.S.equals(response.getResult().getResultStatus())
                 && !(ResultStatusType.U.equals(response.getResult().getResultStatus())
                     && "PAYMENT_IN_PROCESS".equals(response.getResult().getResultCode()))) {
@@ -122,10 +123,11 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
 
     @Override
     public QueryResult query(QueryRequest request) {
+        AntomConfig config = config();
         try {
             AlipayPayQueryRequest queryRequest = new AlipayPayQueryRequest();
             queryRequest.setPaymentRequestId(request.outTradeNo());
-            AlipayPayQueryResponse response = client().execute(queryRequest);
+            AlipayPayQueryResponse response = client(config).execute(queryRequest);
             if (!ResultStatusType.S.equals(response.getResult().getResultStatus())) {
                 throw new ChannelException(PayError.CHANNEL_INVOKE_ERROR,
                     "antom 查询失败: " + response.getResult().getResultMessage());
@@ -142,6 +144,7 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
 
     @Override
     public RefundResult refund(ChannelRefundRequest request) {
+        AntomConfig config = config();
         try {
             AlipayRefundRequest refundRequest = new AlipayRefundRequest();
             refundRequest.setRefundRequestId(request.refundOrderNo());
@@ -149,7 +152,7 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
             refundRequest.setPaymentId(request.thirdOutTradeNo());
             refundRequest.setRefundReason("用户申请退款");
             refundRequest.setRefundAmount(amount(request.currency(), request.amount()));
-            AlipayRefundResponse response = client().execute(refundRequest);
+            AlipayRefundResponse response = client(config).execute(refundRequest);
             if (!ResultStatusType.S.equals(response.getResult().getResultStatus())) {
                 return RefundResult.fail(response.getResult().getResultMessage());
             }
@@ -168,7 +171,8 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
 
     @Override
     public CallbackResult onCallback(CallbackRequest request) {
-        verifySignature(request);
+        AntomConfig config = config();
+        verifySignature(request, config);
         try {
             JsonNode root = MAPPER.readTree(request.body());
             String notifyType = root.path("notifyType").asText();
@@ -193,13 +197,13 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
         }
     }
 
-    private void verifySignature(CallbackRequest request) {
+    private void verifySignature(CallbackRequest request, AntomConfig config) {
         String requestTime = header(request, "request-time");
         String clientId = header(request, "client-id");
         String signature = header(request, "signature");
         try {
             boolean ok = WebhookTool.checkSignature(request.requestUri(), request.httpMethod(), clientId,
-                requestTime, signature, request.body(), props.getAlipayPublicKey());
+                requestTime, signature, request.body(), config.alipayPublicKey());
             if (!ok) {
                 log.error("antom 验签失败, uri={}, clientId={}, requestTime={}", request.requestUri(), clientId,
                     requestTime);
@@ -224,8 +228,8 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
         return amount;
     }
 
-    private String expiryTime() {
-        return ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(props.getExpiryMinutes())
+    private String expiryTime(AntomConfig config) {
+        return ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(config.expiryMinutesOrDefault())
             .format(ISO_8601);
     }
 
@@ -233,15 +237,31 @@ public class AntomChannel implements PayAction, QueryAction, RefundAction, Cance
         return "{\"result\":{\"resultCode\":\"SUCCESS\",\"resultMessage\":\"success\",\"resultStatus\":\"S\"}}";
     }
 
-    private AlipayClient client() {
-        if (client == null) {
+    /** 取当前配置（channel_config 表，30 秒缓存），未启用/不完整抛渠道异常 */
+    private AntomConfig config() {
+        AntomConfig config = channelConfigs.requireEnabled(CHANNEL_CODE, AntomConfig.class);
+        try {
+            config.validate();
+        } catch (IllegalStateException e) {
+            throw new ChannelException(PayError.CHANNEL_INVOKE_ERROR, e.getMessage());
+        }
+        return config;
+    }
+
+    /** SDK client 按配置键缓存，配置变更（换密钥/网关）自动重建 */
+    private AlipayClient client(AntomConfig config) {
+        String key = config.clientKey();
+        CachedClient cached = cachedClient;
+        if (cached == null || !cached.key().equals(key)) {
             synchronized (this) {
-                if (client == null) {
-                    client = new DefaultAlipayClient(props.getGateway(), props.getMerchantPrivateKey(),
-                        props.getAlipayPublicKey(), props.getClientId());
+                cached = cachedClient;
+                if (cached == null || !cached.key().equals(key)) {
+                    cached = new CachedClient(key, new DefaultAlipayClient(config.gatewayOrDefault(),
+                        config.merchantPrivateKey(), config.alipayPublicKey(), config.clientId()));
+                    cachedClient = cached;
                 }
             }
         }
-        return client;
+        return cached.client();
     }
 }

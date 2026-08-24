@@ -22,6 +22,8 @@ public class ChannelLog {
     private String responseJson;
     private String errorMsg;
     private Integer costMs;
+    /** 链路追踪 ID，与应用日志/响应头 X-Trace-Id 对应 */
+    private String traceId;
     private LocalDateTime createTime;
 
     public Long getId() {
@@ -94,6 +96,14 @@ public class ChannelLog {
 
     public void setCostMs(Integer costMs) {
         this.costMs = costMs;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 
     public LocalDateTime getCreateTime() {

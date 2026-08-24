@@ -7,15 +7,25 @@ import com.wallet.common.error.CommonError;
 import com.wallet.common.result.ApiResult;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * 全局异常 → 统一返回体。
+ *
+ * <p>HTTP 状态码约定（影响调用方重试语义，尤其渠道回调）：</p>
+ * <ul>
+ *   <li>业务失败（BizException/ChannelException）：200 + 错误 code——结果已确定，重试无意义；</li>
+ *   <li>参数/报文问题：400——调用方的错，重试无意义；</li>
+ *   <li>锁冲突（LOCK_FAILED）：429——瞬时竞争，<b>渠道回调会按非 2xx 重试</b>，不丢通知；</li>
+ *   <li>系统异常：500——渠道回调同样会重试。</li>
+ * </ul>
  */
 @Slf4j
 @RestControllerAdvice
@@ -32,6 +42,7 @@ public class GlobalExceptionHandler {
     }
 
     /** @Valid 请求体校验失败 */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ApiResult<Void> handleBodyValidation(MethodArgumentNotValidException e) {
         FieldError fieldError = e.getBindingResult().getFieldError();
@@ -41,6 +52,7 @@ public class GlobalExceptionHandler {
     }
 
     /** 请求体解析失败（JSON 语法错误、枚举/时间格式非法等） */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ApiResult<Void> handleUnreadableBody(HttpMessageNotReadableException e) {
         log.warn("请求体解析失败: {}", e.getMessage());
@@ -48,25 +60,29 @@ public class GlobalExceptionHandler {
     }
 
     /** @Validated 方法参数（路径变量/查询参数）校验失败 */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ConstraintViolationException.class)
     public ApiResult<Void> handleParamValidation(ConstraintViolationException e) {
         return ApiResult.fail(CommonError.BAD_PARAM.code(), e.getMessage());
     }
 
-    /** @Lock4j 等锁超时（同一支付单并发操作） */
+    /** @Lock4j 等锁超时（同一支付单并发操作）：429，渠道回调据此重试 */
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     @ExceptionHandler(LockFailureException.class)
     public ApiResult<Void> handleLockFailure(LockFailureException e) {
         return ApiResult.fail(CommonError.LOCK_FAILED.code(), CommonError.LOCK_FAILED.message());
     }
 
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ApiResult<Void> handleMissingHeader(MissingRequestHeaderException e) {
-        return ApiResult.fail("BAD_PARAM", "缺少请求头 " + e.getHeaderName());
+        return ApiResult.fail(CommonError.BAD_PARAM.code(), "缺少请求头 " + e.getHeaderName());
     }
 
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public ApiResult<Void> handleOther(Exception e) {
         log.error("系统异常", e);
-        return ApiResult.fail("SYSTEM_ERROR", "系统繁忙，请稍后再试");
+        return ApiResult.fail(CommonError.SYSTEM_ERROR.code(), CommonError.SYSTEM_ERROR.message());
     }
 }
