@@ -12,24 +12,14 @@
     <artifactId>wallet-channel</artifactId>
 
     <name>wallet-channel</name>
-    <description>三方支付内核（纯 Java，不依赖 Spring）：渠道×动作注册表、支付/退款状态机、渠道调用编排。
+    <description>三方支付内核：渠道×动作注册表、支付/退款状态机、渠道调用编排。
+        纯 Java 不依赖 Spring（本工程内部模块，依赖 common 取日志门面）；
         持久化、事件、日志由 wallet-pay 通过 spi 接口提供；分布式锁由调用方在外层持有。</description>
 
     <dependencies>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-common</artifactId>
         </dependency>
     </dependencies>
 </project>

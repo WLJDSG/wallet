@@ -120,7 +120,7 @@
                 <version>${swagger-annotations.version}</version>
             </dependency>
             <dependency>
-                <!-- 显式钉版本（不走 Boot BOM）：JDK 25 需要 1.18.42+ -->
+                <!-- 显式钉版本（不走 Boot BOM）：JDK 21 需要 1.18.42+ -->
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
@@ -155,6 +155,22 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <!-- 全模块共用的基础依赖。lombok(provided) 与 junit-jupiter(test) 作用域不具传递性，
+         无法放进 wallet-common 让下游继承，因此直接声明在父 pom，所有子模块自动继承，
+         各模块不再各自声明。（版本由上方 dependencyManagement / Boot BOM 管理） -->
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>

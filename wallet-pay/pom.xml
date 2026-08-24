@@ -35,11 +35,6 @@
             <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
         <dependency>
-            <!-- Swagger @Schema 注解（仅注解包） -->
-            <groupId>io.swagger.core.v3</groupId>
-            <artifactId>swagger-annotations-jakarta</artifactId>
-        </dependency>
-        <dependency>
             <!-- 渠道调用日志序列化（Jackson 2，Boot BOM 管版本） -->
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -48,11 +43,6 @@
         <dependency>
             <groupId>com.alipay.global.sdk</groupId>
             <artifactId>global-open-sdk-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <!-- @Lock4j 声明式分布式锁（同一支付单一把锁） -->
@@ -65,10 +55,5 @@
             <artifactId>xxl-job-core</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 </project>

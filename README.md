@@ -42,12 +42,7 @@ wallet（父 pom：版本管理、模块聚合）
 ├── wallet-common    通用件（无业务）：ApiResult 统一返回体 / BizException+ErrorCode /
 │                    IdMaker 单号生成 / MoneyUtil / TraceIds 链路追踪工具
 │
-├── wallet-channel   三方支付内核（纯 Java，不依赖 Spring 与其他模块）
-│   ├── action/        渠道动作接口：PayAction/QueryAction/RefundAction/CancelAction/CallbackAction/ConfirmAction
-│   ├── core/          ChannelTable 渠道×动作注册表、PayFlow 支付编排器
-│   ├── state/         内核状态机（转换表式）
-│   ├── spi/           宿主要实现的接口：TradeStore/RefundStore/PayListener/CallLogWriter/FeeRule
-│   └── ChannelKit     组装入口（builder，构建期校验渠道动作完整性）
+├── wallet-channel   三方支付内核（依赖 common；纯 Java 不依赖 Spring）
 │
 ├── wallet-asset     用户资产（依赖 common）
 │   ├── service/       MoneyService 余额 / PointService 积分 / CouponService 券 / AccountService 总览
@@ -74,7 +69,9 @@ wallet（父 pom：版本管理、模块聚合）
     └── resources/     application.yml + config/*.yml + logback-spring.xml
 ```
 
-依赖方向：`app → pay → (asset, channel, common)`；`asset → common`；`channel` 零依赖。
+依赖方向：`app → pay → (asset, channel, common)`；`asset → common`；`channel → common`。
+`wallet-channel` 保持纯 Java 不依赖 Spring（本工程内部模块，仅依赖 common 取日志门面），
+持久化/事件/日志仍由 pay 通过 SPI 注入。
 SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `2026-08-24-钱包建表.sql`）。
 
 依赖组织：
@@ -88,6 +85,9 @@ SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `20
   BaseMapper/LambdaWrapper 这些**类型**（都在 core 里）。库模块若引 starter，会把
   mybatis-spring、HikariCP、spring-boot-autoconfigure 一整串传递依赖塞给所有复用方，
   并可能触发意外的自动装配——"库提供类型，应用决定装配"。
+- **lombok（provided）与 junit-jupiter（test）统一声明在父 pom 的 `<dependencies>`**：
+  这两个作用域不具传递性、无法放进 common 让下游继承，而全模块都要用——
+  直接由父 pom 声明、所有子模块继承，各模块不再各自重复声明。
 
 ## 快速开始（如何跑起来）
 

@@ -26,13 +26,13 @@
             <artifactId>jackson-annotations</artifactId>
         </dependency>
         <dependency>
-            <!-- Swagger @Schema 注解（仅注解包） -->
+            <!-- Swagger @Schema 注解（仅注解包，统一在 common 提供，asset/pay 传递获得） -->
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations-jakarta</artifactId>
         </dependency>
 
-        <!-- ===== 以下为业务模块（asset/pay）共用的基础运行时依赖，统一在 common 声明，下游免重复 =====
-             （lombok 是 provided 作用域不具传递性，无法上提，各模块自行声明） -->
+        <!-- ===== 以下为业务模块（asset/pay/channel）共用的基础运行时依赖，统一在 common 声明，下游免重复 =====
+             （lombok/junit 因作用域不传递，已上提到父 pom 的 <dependencies> 统一继承） -->
         <dependency>
             <!-- MP 核心：BaseMapper / LambdaWrapper / 注解（boot starter 只在 wallet-app 装配层） -->
             <groupId>com.baomidou</groupId>
@@ -54,10 +54,5 @@
             <artifactId>spring-boot</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 </project>
