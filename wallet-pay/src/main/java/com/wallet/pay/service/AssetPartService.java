@@ -1,13 +1,13 @@
 package com.wallet.pay.service;
 
-import com.wallet.asset.service.CouponService;
-import com.wallet.asset.service.MoneyService;
-import com.wallet.asset.service.PointService;
+import com.wallet.contract.account.CouponService;
+import com.wallet.contract.account.MoneyService;
+import com.wallet.contract.account.PointService;
 import com.wallet.common.error.BizException;
 import com.wallet.pay.error.OrderError;
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 import com.wallet.pay.mapper.PayOrderMapper;
 import com.wallet.pay.mapper.PayPartMapper;
 import com.wallet.pay.mapper.RefundOrderMapper;
@@ -15,7 +15,7 @@ import com.wallet.pay.mapper.RefundPartMapper;
 import com.wallet.pay.state.PartState;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.wallet.channel.enums.RefundState;
+import com.wallet.contract.channel.enums.RefundState;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

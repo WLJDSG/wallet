@@ -19,6 +19,20 @@
             <groupId>com.wallet</groupId>
             <artifactId>wallet-pay</artifactId>
         </dependency>
+        <!-- 组合根：实现模块的 Bean 由 app 拉全。
+             pay 已不依赖 account/channel，这里显式引入实现模块 + 契约，保证编译与运行时 Bean 齐备 -->
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-account</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-channel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-contract</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -52,6 +66,11 @@
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-data-35</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @Lock4j 自动装配（库模块只依赖 lock4j-core 注解，装配统一在 app；RedissonLockExecutor 复用 RedisConfig 的 RedissonClient） -->
+            <groupId>com.baomidou</groupId>
+            <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
         </dependency>
         <dependency>
             <!-- MyBatis-Plus 自动装配（库模块只依赖 mp-core，starter 统一在装配层） -->

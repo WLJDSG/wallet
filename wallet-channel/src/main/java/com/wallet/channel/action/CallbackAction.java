@@ -1,7 +1,7 @@
 package com.wallet.channel.action;
 
-import com.wallet.channel.model.CallbackRequest;
-import com.wallet.channel.model.CallbackResult;
+import com.wallet.contract.channel.model.CallbackRequest;
+import com.wallet.contract.channel.model.CallbackResult;
 
 /**
  * 异步回调解析与验签。

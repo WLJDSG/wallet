@@ -2,7 +2,7 @@ package com.wallet.pay.validate;
 
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.model.CreateOrderCmd;
+import com.wallet.contract.pay.model.CreateOrderCmd;
 
 import java.util.List;
 

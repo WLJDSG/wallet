@@ -1,7 +1,7 @@
 package com.wallet.pay.service;
 
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 
 import java.util.ArrayList;
 import java.util.Comparator;

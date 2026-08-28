@@ -6,32 +6,32 @@ import com.wallet.channel.action.ConfirmAction;
 import com.wallet.channel.action.PayAction;
 import com.wallet.channel.action.QueryAction;
 import com.wallet.channel.action.RefundAction;
-import com.wallet.channel.enums.ActionType;
-import com.wallet.channel.enums.PayError;
+import com.wallet.contract.channel.enums.ActionType;
+import com.wallet.contract.channel.enums.PayError;
 import com.wallet.channel.enums.PayEvent;
-import com.wallet.channel.enums.PayState;
+import com.wallet.contract.channel.enums.PayState;
 import com.wallet.channel.enums.RefundEvent;
-import com.wallet.channel.enums.RefundState;
-import com.wallet.channel.error.ChannelException;
-import com.wallet.channel.model.CallLog;
-import com.wallet.channel.model.CallbackRequest;
-import com.wallet.channel.model.CallbackResult;
-import com.wallet.channel.model.CancelRequest;
-import com.wallet.channel.model.ChannelRefundRequest;
-import com.wallet.channel.model.ConfirmRequest;
-import com.wallet.channel.model.ConfirmResult;
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.PayResult;
-import com.wallet.channel.model.QueryRequest;
-import com.wallet.channel.model.QueryResult;
-import com.wallet.channel.model.RefundRequest;
-import com.wallet.channel.model.RefundResult;
-import com.wallet.channel.model.TradeInfo;
-import com.wallet.channel.spi.CallLogWriter;
-import com.wallet.channel.spi.FeeRule;
-import com.wallet.channel.spi.PayListener;
-import com.wallet.channel.spi.RefundStore;
-import com.wallet.channel.spi.TradeStore;
+import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.model.CallLog;
+import com.wallet.contract.channel.model.CallbackRequest;
+import com.wallet.contract.channel.model.CallbackResult;
+import com.wallet.contract.channel.model.CancelRequest;
+import com.wallet.contract.channel.model.ChannelRefundRequest;
+import com.wallet.contract.channel.model.ConfirmRequest;
+import com.wallet.contract.channel.model.ConfirmResult;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.PayResult;
+import com.wallet.contract.channel.model.QueryRequest;
+import com.wallet.contract.channel.model.QueryResult;
+import com.wallet.contract.channel.model.RefundRequest;
+import com.wallet.contract.channel.model.RefundResult;
+import com.wallet.contract.channel.model.TradeInfo;
+import com.wallet.contract.channel.spi.CallLogWriter;
+import com.wallet.contract.channel.spi.FeeRule;
+import com.wallet.contract.channel.spi.PayListener;
+import com.wallet.contract.channel.spi.RefundStore;
+import com.wallet.contract.channel.spi.TradeStore;
 import com.wallet.channel.state.PayStateMachine;
 import com.wallet.channel.state.RefundStateMachine;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +62,7 @@ public final class PayFlow {
     private final PayListener listener;
     private final FeeRule feeRule;
 
-    /** 请通过 {@code ChannelKit.builder()} 组装，不要直接实例化（Kit 负责注册表完整性校验） */
+    /** 请通过 {@code ChannelServiceImpl.builder()} 组装，不要直接实例化（Kit 负责注册表完整性校验） */
     public PayFlow(ChannelTable table, TradeStore tradeStore, RefundStore refundStore, CallLogWriter logWriter,
         PayListener listener, FeeRule feeRule) {
         this.table = table;

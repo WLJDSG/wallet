@@ -1,8 +1,8 @@
 package com.wallet.pay.adapter;
 
 import lombok.AllArgsConstructor;
-import com.wallet.channel.model.CallLog;
-import com.wallet.channel.spi.CallLogWriter;
+import com.wallet.contract.channel.model.CallLog;
+import com.wallet.contract.channel.spi.CallLogWriter;
 import com.wallet.common.trace.TraceIds;
 import com.wallet.pay.entity.ChannelLog;
 import com.wallet.pay.mapper.ChannelLogMapper;

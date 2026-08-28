@@ -1,7 +1,7 @@
 package com.wallet.channel.action;
 
-import com.wallet.channel.model.ChannelRefundRequest;
-import com.wallet.channel.model.RefundResult;
+import com.wallet.contract.channel.model.ChannelRefundRequest;
+import com.wallet.contract.channel.model.RefundResult;
 
 /**
  * 退款。

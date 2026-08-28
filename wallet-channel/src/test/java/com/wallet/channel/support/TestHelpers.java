@@ -1,6 +1,6 @@
 package com.wallet.channel.support;
 
-import com.wallet.channel.spi.PayListener;
+import com.wallet.contract.channel.spi.PayListener;
 
 import java.util.ArrayList;
 import java.util.List;

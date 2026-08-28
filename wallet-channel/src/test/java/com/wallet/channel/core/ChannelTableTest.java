@@ -1,11 +1,11 @@
 package com.wallet.channel.core;
 
 import com.wallet.channel.action.QueryAction;
-import com.wallet.channel.enums.ActionType;
-import com.wallet.channel.enums.PayError;
-import com.wallet.channel.error.ChannelException;
-import com.wallet.channel.model.QueryRequest;
-import com.wallet.channel.model.QueryResult;
+import com.wallet.contract.channel.enums.ActionType;
+import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.model.QueryRequest;
+import com.wallet.contract.channel.model.QueryResult;
 import com.wallet.channel.support.FakeChannel;
 import org.junit.jupiter.api.Test;
 

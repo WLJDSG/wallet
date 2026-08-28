@@ -1,9 +1,9 @@
 package com.wallet.channel.support;
 
-import com.wallet.channel.enums.PayState;
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.TradeInfo;
-import com.wallet.channel.spi.TradeStore;
+import com.wallet.contract.channel.enums.PayState;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.TradeInfo;
+import com.wallet.contract.channel.spi.TradeStore;
 
 import java.util.Map;
 import java.util.Objects;

@@ -1,8 +1,8 @@
 package com.wallet.pay.state;
 
-import com.wallet.channel.error.ChannelException;
-import com.wallet.channel.enums.PayError;
-import com.wallet.channel.state.StateMachine;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.state.StateMachine;
 
 import java.util.Map;
 

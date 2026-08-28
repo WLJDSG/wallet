@@ -3,12 +3,12 @@ package com.wallet.app.controller;
 import com.wallet.app.model.CouponTakeReq;
 import com.wallet.app.model.PointAddReq;
 import com.wallet.app.model.RechargeReq;
-import com.wallet.asset.entity.UserCoupon;
-import com.wallet.asset.model.AssetSummary;
-import com.wallet.asset.service.AccountService;
-import com.wallet.asset.service.CouponService;
-import com.wallet.asset.service.MoneyService;
-import com.wallet.asset.service.PointService;
+import com.wallet.contract.account.AccountService;
+import com.wallet.contract.account.CouponService;
+import com.wallet.contract.account.MoneyService;
+import com.wallet.contract.account.PointService;
+import com.wallet.contract.account.model.AccountSummary;
+import com.wallet.contract.account.model.CouponView;
 import com.wallet.common.util.IdMaker;
 import com.wallet.common.result.ApiResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,7 +43,7 @@ public class AssetController {
 
     @Operation(summary = "资产总览", description = "余额、积分与可用券列表")
     @GetMapping("/summary")
-    public ApiResult<AssetSummary> summary(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId) {
+    public ApiResult<AccountSummary> summary(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId) {
         return ApiResult.ok(accountService.summary(userId));
     }
 
@@ -65,7 +65,7 @@ public class AssetController {
 
     @Operation(summary = "领券", description = "按券模板领取，CAS 防超发")
     @PostMapping("/coupon/take")
-    public ApiResult<UserCoupon> take(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId, @Valid @RequestBody CouponTakeReq req) {
+    public ApiResult<CouponView> take(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId, @Valid @RequestBody CouponTakeReq req) {
         return ApiResult.ok(couponService.take(userId, req.couponId()));
     }
 }

@@ -1,9 +1,9 @@
 package com.wallet.channel.state;
 
-import com.wallet.channel.enums.PayError;
+import com.wallet.contract.channel.enums.PayError;
 import com.wallet.channel.enums.PayEvent;
-import com.wallet.channel.enums.PayState;
-import com.wallet.channel.error.ChannelException;
+import com.wallet.contract.channel.enums.PayState;
+import com.wallet.contract.channel.error.ChannelException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

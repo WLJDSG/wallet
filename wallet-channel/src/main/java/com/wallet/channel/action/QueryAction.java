@@ -1,7 +1,7 @@
 package com.wallet.channel.action;
 
-import com.wallet.channel.model.QueryRequest;
-import com.wallet.channel.model.QueryResult;
+import com.wallet.contract.channel.model.QueryRequest;
+import com.wallet.contract.channel.model.QueryResult;
 
 /**
  * 主动查询支付结果。

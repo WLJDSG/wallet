@@ -6,7 +6,7 @@ import com.wallet.app.model.PasswordVerifyReq;
 import com.wallet.app.model.VerifyResult;
 import com.wallet.app.limit.LimitDim;
 import com.wallet.app.limit.RateLimit;
-import com.wallet.asset.service.password.PasswordService;
+import com.wallet.contract.account.PasswordService;
 import com.wallet.common.result.ApiResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

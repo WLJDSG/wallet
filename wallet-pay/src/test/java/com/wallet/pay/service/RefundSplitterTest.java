@@ -1,7 +1,7 @@
 package com.wallet.pay.service;
 
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

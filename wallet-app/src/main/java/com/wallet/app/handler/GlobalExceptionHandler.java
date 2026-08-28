@@ -1,7 +1,7 @@
 package com.wallet.app.handler;
 
 import com.baomidou.lock.exception.LockFailureException;
-import com.wallet.channel.error.ChannelException;
+import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.common.error.BizException;
 import com.wallet.common.error.CommonError;
 import com.wallet.common.result.ApiResult;

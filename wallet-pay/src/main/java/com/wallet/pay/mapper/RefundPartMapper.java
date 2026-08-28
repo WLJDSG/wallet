@@ -3,7 +3,7 @@ package com.wallet.pay.mapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.wallet.channel.enums.RefundState;
+import com.wallet.contract.channel.enums.RefundState;
 import com.wallet.pay.entity.RefundPart;
 import org.apache.ibatis.annotations.Mapper;
 

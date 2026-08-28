@@ -1,6 +1,6 @@
 package com.wallet.pay.adapter;
 
-import com.wallet.channel.spi.PayListener;
+import com.wallet.contract.channel.spi.PayListener;
 import com.wallet.pay.service.OrderFinisher;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

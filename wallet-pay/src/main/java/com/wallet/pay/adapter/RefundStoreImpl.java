@@ -1,11 +1,11 @@
 package com.wallet.pay.adapter;
 
 import lombok.AllArgsConstructor;
-import com.wallet.channel.enums.PayError;
-import com.wallet.channel.enums.RefundState;
-import com.wallet.channel.error.ChannelException;
-import com.wallet.channel.model.RefundInfo;
-import com.wallet.channel.spi.RefundStore;
+import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.model.RefundInfo;
+import com.wallet.contract.channel.spi.RefundStore;
 import com.wallet.pay.entity.RefundPart;
 import com.wallet.pay.mapper.RefundPartMapper;
 import org.springframework.stereotype.Component;

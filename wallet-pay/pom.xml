@@ -16,44 +16,10 @@
         退款分摊、超时关单任务；实现 wallet-channel 的 spi，并提供 mock 渠道与 Antom 渠道。</description>
 
     <dependencies>
+        <!-- 渠道操作契约 ChannelService / 渠道契约 model-spi-枚举：pay 不依赖 channel 实现模块 -->
         <dependency>
             <groupId>com.wallet</groupId>
-            <artifactId>wallet-common</artifactId>
+            <artifactId>wallet-contract</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.wallet</groupId>
-            <artifactId>wallet-channel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.wallet</groupId>
-            <artifactId>wallet-asset</artifactId>
-        </dependency>
-        <!-- mybatis-plus-core / spring-context / spring-tx / spring-boot 由 wallet-common 统一提供 -->
-        <dependency>
-            <!-- @ConditionalOnProperty（AntomChannel/MockChannel 按配置启用），仅本模块用 -->
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-autoconfigure</artifactId>
-        </dependency>
-        <dependency>
-            <!-- 渠道调用日志序列化（Jackson 2，Boot BOM 管版本） -->
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <!-- Antom（支付宝国际）官方 SDK：真实渠道示范，未配置商户密钥时不启用 -->
-        <dependency>
-            <groupId>com.alipay.global.sdk</groupId>
-            <artifactId>global-open-sdk-java</artifactId>
-        </dependency>
-        <dependency>
-            <!-- @Lock4j 声明式分布式锁（同一支付单一把锁） -->
-            <groupId>com.baomidou</groupId>
-            <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <!-- @XxlJob 任务注解（执行器在 wallet-app 装配） -->
-            <groupId>com.xuxueli</groupId>
-            <artifactId>xxl-job-core</artifactId>
-        </dependency>
-
     </dependencies>
 </project>

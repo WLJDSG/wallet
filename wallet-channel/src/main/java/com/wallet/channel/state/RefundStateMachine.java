@@ -1,9 +1,10 @@
 package com.wallet.channel.state;
 
-import com.wallet.channel.enums.PayError;
+import com.wallet.contract.channel.enums.PayError;
 import com.wallet.channel.enums.RefundEvent;
-import com.wallet.channel.enums.RefundState;
-import com.wallet.channel.error.ChannelException;
+import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.state.StateMachine;
 
 import java.util.Map;
 

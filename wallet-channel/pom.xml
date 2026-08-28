@@ -12,14 +12,20 @@
     <artifactId>wallet-channel</artifactId>
 
     <name>wallet-channel</name>
-    <description>三方支付内核：渠道×动作注册表、支付/退款状态机、渠道调用编排。
-        纯 Java 不依赖 Spring（本工程内部模块，依赖 common 取日志门面）；
-        持久化、事件、日志由 wallet-pay 通过 spi 接口提供；分布式锁由调用方在外层持有。</description>
+    <description>所有与第三方交互的归属地：支付内核（渠道×动作注册表、状态机、调用编排）+ 渠道实现
+        （Mock/Antom 等）。内核依赖 contract.channel 契约；持久化、事件、日志由宿主通过 spi 接口提供；
+        分布式锁由调用方在外层持有。渠道实现用到 Spring 组件注解与配置属性。</description>
 
     <dependencies>
+        <!-- 渠道契约：model/spi/枚举/异常/StateMachine/ChannelService/ChannelConfigService 在 contract.channel -->
         <dependency>
             <groupId>com.wallet</groupId>
-            <artifactId>wallet-common</artifactId>
+            <artifactId>wallet-contract</artifactId>
+        </dependency>
+        <!-- Antom（支付宝国际）官方 SDK：真实渠道示范，未配置商户密钥时不启用 -->
+        <dependency>
+            <groupId>com.alipay.global.sdk</groupId>
+            <artifactId>global-open-sdk-java</artifactId>
         </dependency>
     </dependencies>
 </project>

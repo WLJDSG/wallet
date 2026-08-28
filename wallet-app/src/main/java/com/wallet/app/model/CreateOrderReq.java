@@ -1,7 +1,7 @@
 package com.wallet.app.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.wallet.pay.model.CreateOrderCmd;
+import com.wallet.contract.pay.model.CreateOrderCmd;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;

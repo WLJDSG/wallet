@@ -1,8 +1,8 @@
 package com.wallet.app.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.wallet.pay.enums.PayType;
-import com.wallet.pay.model.PartItem;
+import com.wallet.contract.pay.enums.PayType;
+import com.wallet.contract.pay.model.PartItem;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 

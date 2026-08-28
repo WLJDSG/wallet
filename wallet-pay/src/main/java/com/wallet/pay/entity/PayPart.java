@@ -2,7 +2,7 @@ package com.wallet.pay.entity;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.wallet.pay.state.PartState;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;

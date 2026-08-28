@@ -1,9 +1,9 @@
 package com.wallet.pay.validate.validator;
 
 import com.wallet.common.error.BizException;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 import com.wallet.pay.error.OrderError;
-import com.wallet.pay.model.PartItem;
+import com.wallet.contract.pay.model.PartItem;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
 import com.wallet.pay.validate.PayValidator;

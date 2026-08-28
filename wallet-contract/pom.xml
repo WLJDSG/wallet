@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wallet</groupId>
+        <artifactId>wallet</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>wallet-contract</artifactId>
+
+    <name>wallet-contract</name>
+    <description>系统内部模块通信契约：跨模块调用只依赖这里的接口与数据模型，不含任何业务实现。
+        各实现模块（account/pay）依赖本模块并实现对应能力接口；调用方引入本模块即可按接口调用，由组合根决定装配。</description>
+
+    <dependencies>
+        <!-- swagger-annotations-jakarta（契约 DTO 标 @Schema）等横切类型由 wallet-common 传递获得 -->
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-common</artifactId>
+        </dependency>
+    </dependencies>
+</project>

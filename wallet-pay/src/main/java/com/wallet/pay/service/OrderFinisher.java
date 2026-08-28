@@ -2,7 +2,7 @@ package com.wallet.pay.service;
 
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 import com.wallet.pay.event.OrderPaidEvent;
 import com.wallet.pay.mapper.PayOrderMapper;
 import com.wallet.pay.mapper.PayPartMapper;

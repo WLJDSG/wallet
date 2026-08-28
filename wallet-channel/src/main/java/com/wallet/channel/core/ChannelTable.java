@@ -7,9 +7,9 @@ import com.wallet.channel.action.ConfirmAction;
 import com.wallet.channel.action.PayAction;
 import com.wallet.channel.action.QueryAction;
 import com.wallet.channel.action.RefundAction;
-import com.wallet.channel.enums.ActionType;
-import com.wallet.channel.enums.PayError;
-import com.wallet.channel.error.ChannelException;
+import com.wallet.contract.channel.enums.ActionType;
+import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.error.ChannelException;
 
 import java.util.Collection;
 import java.util.EnumMap;

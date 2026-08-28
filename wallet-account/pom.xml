@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wallet</groupId>
+        <artifactId>wallet</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>wallet-account</artifactId>
+
+    <name>wallet-account</name>
+    <description>用户资产：余额 money、积分 point、优惠券 coupon、支付密码 password。
+        扣减一律条件更新（CAS），流水按业务号幂等；支付密码 = BCrypt + 错误锁定 + 一次性票据。</description>
+
+    <dependencies>
+        <!-- 资产能力契约：实现 MoneyService/PointService/CouponService/AccountService/PasswordService -->
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-contract</artifactId>
+        </dependency>
+    </dependencies>
+</project>

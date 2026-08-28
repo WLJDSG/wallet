@@ -1,6 +1,6 @@
 package com.wallet.pay.validate.validator;
 
-import com.wallet.asset.service.password.PasswordService;
+import com.wallet.contract.account.PasswordService;
 import com.wallet.common.error.BizException;
 import com.wallet.pay.entity.PayPart;
 import com.wallet.pay.error.OrderError;

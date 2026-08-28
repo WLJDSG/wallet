@@ -1,18 +1,18 @@
 package com.wallet.channel.core;
 
-import com.wallet.channel.ChannelKit;
-import com.wallet.channel.enums.ActionType;
-import com.wallet.channel.enums.PayError;
-import com.wallet.channel.enums.PayState;
-import com.wallet.channel.enums.RefundState;
-import com.wallet.channel.error.ChannelException;
-import com.wallet.channel.model.CallbackRequest;
-import com.wallet.channel.model.ConfirmRequest;
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.PayResult;
-import com.wallet.channel.model.QueryRequest;
-import com.wallet.channel.model.RefundRequest;
-import com.wallet.channel.model.TradeInfo;
+import com.wallet.channel.ChannelServiceImpl;
+import com.wallet.contract.channel.enums.ActionType;
+import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.enums.PayState;
+import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.model.CallbackRequest;
+import com.wallet.contract.channel.model.ConfirmRequest;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.PayResult;
+import com.wallet.contract.channel.model.QueryRequest;
+import com.wallet.contract.channel.model.RefundRequest;
+import com.wallet.contract.channel.model.TradeInfo;
 import com.wallet.channel.support.FakeChannel;
 import com.wallet.channel.support.MemoryRefundStore;
 import com.wallet.channel.support.MemoryTradeStore;
@@ -38,7 +38,7 @@ class PayFlowTest {
     private MemoryRefundStore refunds;
     private TestHelpers.RecordingListener events;
     private PayFlow flow;
-    private ChannelKit kit;
+    private ChannelServiceImpl kit;
 
     @BeforeEach
     void setUp() {
@@ -46,7 +46,7 @@ class PayFlowTest {
         trades = new MemoryTradeStore();
         refunds = new MemoryRefundStore();
         events = new TestHelpers.RecordingListener();
-        kit = ChannelKit.builder()
+        kit = ChannelServiceImpl.builder()
             .addChannel(channel)
             .addChannel(new PayOnlyChannel(PAY_ONLY))
             .tradeStore(trades)
@@ -257,7 +257,7 @@ class PayFlowTest {
 
     @Test
     void feeRuleAppliedToPayAmount() {
-        ChannelKit feeKit = ChannelKit.builder()
+        ChannelServiceImpl feeKit = ChannelServiceImpl.builder()
             .addChannel(new FakeChannel(CHANNEL))
             .tradeStore(trades)
             .refundStore(refunds)

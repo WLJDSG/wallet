@@ -1,11 +1,11 @@
 package com.wallet.app.config;
 
-import com.wallet.channel.ChannelKit;
+import com.wallet.channel.ChannelServiceImpl;
 import com.wallet.channel.action.Channel;
-import com.wallet.channel.spi.CallLogWriter;
-import com.wallet.channel.spi.PayListener;
-import com.wallet.channel.spi.RefundStore;
-import com.wallet.channel.spi.TradeStore;
+import com.wallet.contract.channel.spi.CallLogWriter;
+import com.wallet.contract.channel.spi.PayListener;
+import com.wallet.contract.channel.spi.RefundStore;
+import com.wallet.contract.channel.spi.TradeStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,9 +19,9 @@ import java.util.List;
 public class ChannelConfig {
 
     @Bean
-    public ChannelKit channelKit(List<Channel> channels, TradeStore tradeStore, RefundStore refundStore,
+    public ChannelServiceImpl channelKit(List<Channel> channels, TradeStore tradeStore, RefundStore refundStore,
         PayListener payListener, CallLogWriter callLogWriter) {
-        return ChannelKit.builder()
+        return ChannelServiceImpl.builder()
             .channels(channels)
             .tradeStore(tradeStore)
             .refundStore(refundStore)

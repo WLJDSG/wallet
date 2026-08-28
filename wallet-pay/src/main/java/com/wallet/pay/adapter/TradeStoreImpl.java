@@ -1,14 +1,14 @@
 package com.wallet.pay.adapter;
 
 import lombok.AllArgsConstructor;
-import com.wallet.channel.enums.PayError;
-import com.wallet.channel.enums.PayState;
-import com.wallet.channel.error.ChannelException;
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.TradeInfo;
-import com.wallet.channel.spi.TradeStore;
+import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.enums.PayState;
+import com.wallet.contract.channel.error.ChannelException;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.TradeInfo;
+import com.wallet.contract.channel.spi.TradeStore;
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.enums.PayType;
+import com.wallet.contract.pay.enums.PayType;
 import com.wallet.pay.state.PartState;
 import com.wallet.pay.mapper.PayPartMapper;
 import org.springframework.stereotype.Component;

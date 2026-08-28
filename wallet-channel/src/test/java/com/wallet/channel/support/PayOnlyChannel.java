@@ -2,10 +2,10 @@ package com.wallet.channel.support;
 
 import com.wallet.channel.action.CallbackAction;
 import com.wallet.channel.action.PayAction;
-import com.wallet.channel.model.CallbackRequest;
-import com.wallet.channel.model.CallbackResult;
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.TradeInfo;
+import com.wallet.contract.channel.model.CallbackRequest;
+import com.wallet.contract.channel.model.CallbackResult;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.TradeInfo;
 
 /**
  * 只实现 PAY + CALLBACK 的渠道（模拟 PayPal 式无主动查询能力的渠道）。

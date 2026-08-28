@@ -15,7 +15,8 @@
     <modules>
         <module>wallet-common</module>
         <module>wallet-channel</module>
-        <module>wallet-asset</module>
+        <module>wallet-contract</module>
+        <module>wallet-account</module>
         <module>wallet-pay</module>
         <module>wallet-app</module>
     </modules>
@@ -67,8 +68,14 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <!-- 跨模块通信契约：接口 + 数据模型 + 扩展点，无业务实现 -->
                 <groupId>com.wallet</groupId>
-                <artifactId>wallet-asset</artifactId>
+                <artifactId>wallet-contract</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wallet</groupId>
+                <artifactId>wallet-account</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -84,7 +91,7 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
-                <!-- 库模块（asset/pay）编译用：BaseMapper/Wrapper/注解，不带 Boot 自动装配 -->
+                <!-- 库模块（account/pay）编译用：BaseMapper/Wrapper/注解，不带 Boot 自动装配 -->
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-core</artifactId>
                 <version>${mybatis-plus.version}</version>
@@ -151,6 +158,12 @@
                      RedissonLockExecutor 复用 RedisConfig 手动装配的 RedissonClient -->
                 <groupId>com.baomidou</groupId>
                 <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
+                <version>${lock4j.version}</version>
+            </dependency>
+            <dependency>
+                <!-- @Lock4j 注解类型：库模块编译用（自动装配由 app 引 starter） -->
+                <groupId>com.baomidou</groupId>
+                <artifactId>lock4j-core</artifactId>
                 <version>${lock4j.version}</version>
             </dependency>
         </dependencies>

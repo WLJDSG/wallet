@@ -1,8 +1,8 @@
 package com.wallet.channel.support;
 
-import com.wallet.channel.enums.RefundState;
-import com.wallet.channel.model.RefundInfo;
-import com.wallet.channel.spi.RefundStore;
+import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.contract.channel.model.RefundInfo;
+import com.wallet.contract.channel.spi.RefundStore;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

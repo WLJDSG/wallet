@@ -1,7 +1,7 @@
 package com.wallet.channel.action;
 
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.TradeInfo;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.TradeInfo;
 
 /**
  * 发起支付（每个渠道必须实现）。
@@ -13,7 +13,7 @@ public interface PayAction extends Channel {
      *
      * @param request 支付请求（金额已含手续费）
      * @param trade   已落库的交易单快照（提供 outTradeNo）
-     * @throws com.wallet.channel.error.ChannelException 渠道下单失败时抛出 CHANNEL_INVOKE_ERROR
+     * @throws com.wallet.contract.channel.error.ChannelException 渠道下单失败时抛出 CHANNEL_INVOKE_ERROR
      */
     Object pay(PayRequest request, TradeInfo trade);
 }

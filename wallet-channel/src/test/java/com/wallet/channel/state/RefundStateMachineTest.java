@@ -1,7 +1,7 @@
 package com.wallet.channel.state;
 
 import com.wallet.channel.enums.RefundEvent;
-import com.wallet.channel.enums.RefundState;
+import com.wallet.contract.channel.enums.RefundState;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

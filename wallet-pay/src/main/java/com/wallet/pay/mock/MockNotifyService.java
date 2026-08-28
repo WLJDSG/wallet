@@ -1,8 +1,8 @@
 package com.wallet.pay.mock;
 
 import com.wallet.common.trace.TraceIds;
-import com.wallet.pay.config.MockProperties;
-import com.wallet.pay.service.PayService;
+import com.wallet.pay.config.MockNotifyProperties;
+import com.wallet.contract.pay.PayService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -24,6 +24,9 @@ import java.util.concurrent.TimeUnit;
 @AllArgsConstructor
 public class MockNotifyService {
 
+    /** mock 渠道编码（与 channel 侧 MockChannel.CHANNEL_CODE 同值；宿主联调特判用） */
+    private static final String MOCK_CHANNEL_CODE = "MOCK";
+
     private static final ScheduledExecutorService SCHEDULER =
         Executors.newSingleThreadScheduledExecutor(r -> {
             Thread thread = new Thread(r, "mock-notify");
@@ -31,13 +34,14 @@ public class MockNotifyService {
             return thread;
         });
 
-    private final MockProperties props;
+    private final MockNotifyProperties props;
     // PayService 依赖本类（下单后注册自动回调），用 ObjectProvider 延迟解析避免循环依赖
     private final ObjectProvider<PayService> payService;
 
 
-    public void scheduleAutoNotify(String orderNo, String partNo) {
-        if (props.getNotifySeconds() <= 0) {
+    /** 渠道支付发起后登记自动回调：仅 mock 渠道需要（真实渠道自行推送，无需宿主模拟） */
+    public void scheduleAutoNotify(String channelCode, String orderNo, String partNo) {
+        if (!MOCK_CHANNEL_CODE.equals(channelCode) || props.getNotifySeconds() <= 0) {
             return;
         }
         SCHEDULER.schedule(() -> notifyNow(orderNo, partNo), props.getNotifySeconds(), TimeUnit.SECONDS);
@@ -46,7 +50,7 @@ public class MockNotifyService {
     public void notifyNow(String orderNo, String partNo) {
         TraceIds.seed();
         try {
-            payService.getObject().handleCallback("MOCK", orderNo, partNo, "{\"result\":\"SUCCESS\"}",
+            payService.getObject().handleCallback(MOCK_CHANNEL_CODE, orderNo, partNo, "{\"result\":\"SUCCESS\"}",
                 Map.of("x-mock-token", props.getSecret()), "POST",
                 "/api/pay/callback/MOCK/" + orderNo + "/" + partNo);
         } catch (Exception e) {

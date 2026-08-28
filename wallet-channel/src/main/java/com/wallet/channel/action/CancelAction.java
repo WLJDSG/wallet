@@ -1,6 +1,6 @@
 package com.wallet.channel.action;
 
-import com.wallet.channel.model.CancelRequest;
+import com.wallet.contract.channel.model.CancelRequest;
 
 /**
  * 关闭/取消未支付交易。

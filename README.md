@@ -42,49 +42,65 @@ wallet（父 pom：版本管理、模块聚合）
 ├── wallet-common    通用件（无业务）：ApiResult 统一返回体 / BizException+ErrorCode /
 │                    IdMaker 单号生成 / MoneyUtil / TraceIds 链路追踪工具
 │
-├── wallet-channel   三方支付内核（依赖 common；纯 Java 不依赖 Spring）
+├── wallet-contract  跨模块通信契约（依赖 common）：能力接口 *Service + 数据模型 + 扩展点，无业务实现。
+│   ├── account/      MoneyService/PointService/CouponService/AccountService/PasswordService +
+│   │                 CouponView/AccountSummary/CouponType
+│   ├── channel/      ChannelService（内核操作）/ ChannelConfigService（配置扩展点）+
+│   │                 model(14)/spi(5)/枚举/ChannelException/StateMachine
+│   └── pay/          PayService/RefundService（编排）+ CreateOrderCmd/PartItem/结果/详情视图等 DTO
 │
-├── wallet-asset     用户资产（依赖 common）
-│   ├── service/       MoneyService 余额 / PointService 积分 / CouponService 券 / AccountService 总览
-│   ├── service/password/  支付密码：BCrypt + 错误锁定 + 一次性授权票据
+├── wallet-channel   所有三方交互的归属地（依赖 contract、common）：支付内核 + 渠道实现
+│   ├── core/         ChannelTable 渠道×动作注册表 / PayFlow 支付编排
+│   ├── ChannelServiceImpl  内核组装门面（实现契约 ChannelService，由 app 装配）
+│   ├── action/       Channel 根接口 + Pay/Query/Refund/Cancel/Callback/Confirm 动作接口（渠道扩展点）
+│   ├── state/        支付/退款状态机（StateMachine 契约在 contract）
+│   ├── mock/         MockChannel 模拟渠道 + MockStore/MockPayload/MockProperties
+│   └── antom/        Antom（支付宝国际）真实渠道 + AntomConfig/AntomPayload
+│
+├── wallet-account   用户账户（依赖 contract、common）：余额 / 积分 / 券 / 支付密码
+│   ├── service/       MoneyServiceImpl 余额 / PointServiceImpl 积分 / CouponServiceImpl 券 /
+│   │                  AccountServiceImpl 总览（实现 contract 的 *Service 接口）
+│   ├── service/password/  PasswordServiceImpl 支付密码：BCrypt + 错误锁定 + 一次性授权票据
 │   └── mapper/ entity/    全部 CAS 条件更新 + 按业务号幂等流水
 │
-├── wallet-pay       支付编排（依赖 asset、channel、common）
-│   ├── service/       PayService 支付编排 / RefundService 退款 / AssetPartService 资产事务 /
+├── wallet-pay       支付编排（依赖 contract、common；不依赖 account/channel）
+│   ├── service/       PayServiceImpl 支付编排 / RefundServiceImpl 退款 / AssetPartService 资产事务 /
 │   │                  OrderFinisher 结单器 / RefundSplitter 退款分摊（纯函数）
-│   ├── adapter/       channel 内核 SPI 的落库适配（TradeStore/RefundStore/PayListener/CallLogWriter）
+│   ├── adapter/       contract.channel.spi 的落库适配（TradeStore/RefundStore/PayListener/CallLogWriter）
+│   ├── service/ChannelConfigServiceImpl  ChannelConfigService 契约实现（channel_config 表）
 │   ├── event/         领域事件：OrderPaidEvent/OrderClosedEvent/RefundSuccessEvent + 审计订阅示例
 │   ├── state/         OrderState/PartState/RefundOrderState 枚举 + 转换表状态机
-│   ├── enums/         PayType（COUPON/POINT/MONEY/CHANNEL）
 │   ├── job/           CloseExpiredOrderJob 超时关单（XXL-Job）
-│   ├── mock/          MockChannel 模拟渠道 + MockNotifyService 自动回调（仅联调）
-│   └── antom/         Antom（支付宝国际）真实渠道示范
+│   └── mock/          MockNotifyService 自动回调（仅联调，宿主侧）
 │
-└── wallet-app       启动模块（依赖 pay）
-    ├── controller/    REST 接口（入参 *Req + @Valid）
+└── wallet-app       启动模块/组合根（依赖 pay、account、channel、contract）
+    ├── controller/    REST 接口（入参 *Req + @Valid，跨模块调用经 contract 接口）
     ├── handler/       GlobalExceptionHandler 全局异常 → 统一返回体
     ├── filter/        TraceIdFilter 链路追踪
     ├── config/        RedisConfig / MybatisPlusConfig / JacksonConfig / WebConfig（跨域+限流）/
-    │                  XxlJobConfig / ChannelConfig（渠道内核装配）
+    │                  XxlJobConfig / ChannelConfig（ChannelKit 装配：渠道 + spi 落库适配）
     └── resources/     application.yml + config/*.yml + logback-spring.xml
 ```
 
-依赖方向：`app → pay → (asset, channel, common)`；`asset → common`；`channel → common`。
-`wallet-channel` 保持纯 Java 不依赖 Spring（本工程内部模块，仅依赖 common 取日志门面），
-持久化/事件/日志仍由 pay 通过 SPI 注入。
+依赖方向：`app → (pay, account, channel, contract)`；`pay → (contract, common)`；
+`account → (contract, common)`；`channel → (contract, common)`；`contract → common`。
+**跨模块调用只依赖 `wallet-contract` 的接口与数据模型**，实现模块的 Bean 由 app（组合根）装配齐全；
+渠道实现的持久化/事件/日志经 `contract.channel.spi` 由 pay（宿主）提供，渠道配置经
+`contract.channel.ChannelConfigService` 由 pay 读 channel_config 表供给。
 SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `2026-08-24-钱包建表.sql`）。
 
 依赖组织：
 
 - 版本统一在父 pom `dependencyManagement`（Boot BOM + Spring Cloud BOM + 自管三方件）。
-- asset/pay 共用的基础运行时依赖（`mybatis-plus-core`/`spring-context`/`spring-tx`/`spring-boot`）
-  统一在 `wallet-common` 声明一次，下游免重复；模块独有的（如 pay 的 `spring-boot-autoconfigure`、
-  asset 的 `redisson`）各自声明。lombok 是 provided 作用域不具传递性，各模块自行声明。
-- **库模块不引 boot starter，只引 `mybatis-plus-core`**。原因：starter 的职责是"启动期自动装配"
-  （SqlSessionFactory、数据源、拦截器注册），只有可运行的 wallet-app 需要；库模块编译期只需要
-  BaseMapper/LambdaWrapper 这些**类型**（都在 core 里）。库模块若引 starter，会把
-  mybatis-spring、HikariCP、spring-boot-autoconfigure 一整串传递依赖塞给所有复用方，
-  并可能触发意外的自动装配——"库提供类型，应用决定装配"。
+- **横切依赖按"库提供类型、应用决定装配"分工**：
+  - `wallet-common` 统一提供横切基建**类型/注解**（可能多模块用，库模块经 common 传递获得，免重复声明）：
+    `mybatis-plus-core` / `spring-context` / `spring-tx` / `spring-boot` / `jackson-databind` /
+    `lock4j-core`（`@Lock4j`）/ `redisson`（分布式原语）/ `spring-boot-autoconfigure`（条件注解）/
+    `spring-security-crypto`（BCrypt）/ `xxl-job-core`（`@XxlJob`）。
+  - **boot starter（自动装配）一律只在 `wallet-app`**：`lock4j-redisson-spring-boot-starter`、
+    `mybatis-plus-spring-boot3-starter`、`spring-boot-starter-*` 等。库模块引 starter 会把自动装配
+    和 mybatis-spring/HikariCP/autoconfigure 一整串传递依赖塞给所有复用方，并可能触发意外装配。
+  - **垂直三方业务 SDK 留在所属模块**：如 channel 的 Antom（支付宝国际）SDK——只服务于支付渠道这个具体集成。
 - **lombok（provided）与 junit-jupiter（test）统一声明在父 pom 的 `<dependencies>`**：
   这两个作用域不具传递性、无法放进 common 让下游继承，而全模块都要用——
   直接由父 pom 声明、所有子模块继承，各模块不再各自重复声明。

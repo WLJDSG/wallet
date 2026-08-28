@@ -6,17 +6,17 @@ import com.wallet.channel.action.ConfirmAction;
 import com.wallet.channel.action.PayAction;
 import com.wallet.channel.action.QueryAction;
 import com.wallet.channel.action.RefundAction;
-import com.wallet.channel.model.CallbackRequest;
-import com.wallet.channel.model.CallbackResult;
-import com.wallet.channel.model.CancelRequest;
-import com.wallet.channel.model.ChannelRefundRequest;
-import com.wallet.channel.model.ConfirmRequest;
-import com.wallet.channel.model.ConfirmResult;
-import com.wallet.channel.model.PayRequest;
-import com.wallet.channel.model.QueryRequest;
-import com.wallet.channel.model.QueryResult;
-import com.wallet.channel.model.RefundResult;
-import com.wallet.channel.model.TradeInfo;
+import com.wallet.contract.channel.model.CallbackRequest;
+import com.wallet.contract.channel.model.CallbackResult;
+import com.wallet.contract.channel.model.CancelRequest;
+import com.wallet.contract.channel.model.ChannelRefundRequest;
+import com.wallet.contract.channel.model.ConfirmRequest;
+import com.wallet.contract.channel.model.ConfirmResult;
+import com.wallet.contract.channel.model.PayRequest;
+import com.wallet.contract.channel.model.QueryRequest;
+import com.wallet.contract.channel.model.QueryResult;
+import com.wallet.contract.channel.model.RefundResult;
+import com.wallet.contract.channel.model.TradeInfo;
 
 /**
  * 全能力假渠道，各动作行为可配置、调用次数可断言。

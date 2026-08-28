@@ -1,7 +1,7 @@
 package com.wallet.channel.action;
 
-import com.wallet.channel.model.ConfirmRequest;
-import com.wallet.channel.model.ConfirmResult;
+import com.wallet.contract.channel.model.ConfirmRequest;
+import com.wallet.contract.channel.model.ConfirmResult;
 
 /**
  * 二段式扣款确认（如 PayPal execute payment）。

@@ -1,10 +1,10 @@
 package com.wallet.pay.validate.validator;
 
-import com.wallet.asset.service.CouponService;
+import com.wallet.contract.account.CouponService;
 import com.wallet.common.error.BizException;
 import com.wallet.pay.config.PayProperties;
 import com.wallet.pay.error.OrderError;
-import com.wallet.pay.model.PartItem;
+import com.wallet.contract.pay.model.PartItem;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
 import com.wallet.pay.validate.PayValidator;
