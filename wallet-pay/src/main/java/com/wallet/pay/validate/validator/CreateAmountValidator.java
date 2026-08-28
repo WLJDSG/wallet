@@ -1,8 +1,8 @@
 package com.wallet.pay.validate.validator;
 
-import com.wallet.common.error.BizException;
-import com.wallet.contract.pay.enums.PayType;
-import com.wallet.pay.error.OrderError;
+import com.wallet.common.error.CommonException;
+import com.wallet.common.enums.PayType;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.contract.pay.model.PartItem;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
@@ -33,11 +33,11 @@ public class CreateAmountValidator implements PayValidator {
             }
         }
         if (sum != context.cmd().totalAmount()) {
-            throw new BizException(OrderError.AMOUNT_NOT_MATCH,
+            throw new CommonException(ErrorCode.AMOUNT_NOT_MATCH,
                 "sum=" + sum + ", total=" + context.cmd().totalAmount());
         }
         if (channelCount > 1) {
-            throw new BizException(OrderError.PART_INVALID, "一个支付单至多一个三方分段");
+            throw new CommonException(ErrorCode.PART_INVALID, "一个支付单至多一个三方分段");
         }
     }
 

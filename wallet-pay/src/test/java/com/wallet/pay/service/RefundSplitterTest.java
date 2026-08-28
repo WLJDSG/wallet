@@ -1,7 +1,9 @@
 package com.wallet.pay.service;
+import com.wallet.contract.pay.model.RefundAllocation;
+import com.wallet.pay.serviceImpl.refund.RefundSplitter;
 
 import com.wallet.pay.entity.PayPart;
-import com.wallet.contract.pay.enums.PayType;
+import com.wallet.common.enums.PayType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -31,9 +33,9 @@ class RefundSplitterTest {
             part("T1", PayType.COUPON, 1000, 0),
             part("T2", PayType.MONEY, 2000, 0),
             part("T3", PayType.CHANNEL, 7000, 0));
-        List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, 3000);
+        List<RefundAllocation> allocs = RefundSplitter.split(parts, 3000);
         assertEquals(1, allocs.size());
-        assertEquals("T3", allocs.get(0).part().getPartNo());
+        assertEquals("T3", allocs.get(0).part().partNo());
         assertEquals(3000, allocs.get(0).amount());
     }
 
@@ -43,12 +45,12 @@ class RefundSplitterTest {
             part("T1", PayType.POINT, 2000, 0),
             part("T2", PayType.MONEY, 3000, 0),
             part("T3", PayType.CHANNEL, 5000, 0));
-        List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, 7000);
+        List<RefundAllocation> allocs = RefundSplitter.split(parts, 7000);
         // CHANNEL 吸收 5000，剩 2000 → MONEY 吸收 2000
         assertEquals(2, allocs.size());
-        assertEquals("T3", allocs.get(0).part().getPartNo());
+        assertEquals("T3", allocs.get(0).part().partNo());
         assertEquals(5000, allocs.get(0).amount());
-        assertEquals("T2", allocs.get(1).part().getPartNo());
+        assertEquals("T2", allocs.get(1).part().partNo());
         assertEquals(2000, allocs.get(1).amount());
     }
 
@@ -56,7 +58,7 @@ class RefundSplitterTest {
     void respectsAlreadyRefunded() {
         List<PayPart> parts = List.of(
             part("T1", PayType.CHANNEL, 5000, 3000));
-        List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, 2000);
+        List<RefundAllocation> allocs = RefundSplitter.split(parts, 2000);
         assertEquals(1, allocs.size());
         assertEquals(2000, allocs.get(0).amount());
     }
@@ -65,7 +67,7 @@ class RefundSplitterTest {
     void pointCountConvertedFromPartRatio() {
         PayPart pointPart = part("T1", PayType.POINT, 1000, 0);
         pointPart.setPointCount(100L); // 1000分 = 100积分，即 10分=1积分
-        List<RefundSplitter.Alloc> allocs = RefundSplitter.split(List.of(pointPart), 300);
+        List<RefundAllocation> allocs = RefundSplitter.split(List.of(pointPart), 300);
         assertEquals(30, allocs.get(0).pointCount());
     }
 
@@ -74,9 +76,9 @@ class RefundSplitterTest {
         List<PayPart> parts = List.of(
             part("T1", PayType.COUPON, 500, 0),
             part("T2", PayType.MONEY, 500, 0));
-        List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, 300);
+        List<RefundAllocation> allocs = RefundSplitter.split(parts, 300);
         assertEquals(1, allocs.size());
-        assertEquals("T2", allocs.get(0).part().getPartNo());
+        assertEquals("T2", allocs.get(0).part().partNo());
     }
 
     @Test
@@ -91,8 +93,8 @@ class RefundSplitterTest {
             part("T1", PayType.POINT, 2000, 0),
             part("T2", PayType.MONEY, 3000, 0),
             part("T3", PayType.CHANNEL, 5000, 0));
-        List<RefundSplitter.Alloc> allocs = RefundSplitter.split(parts, 10000);
+        List<RefundAllocation> allocs = RefundSplitter.split(parts, 10000);
         assertEquals(3, allocs.size());
-        assertTrue(allocs.stream().mapToLong(RefundSplitter.Alloc::amount).sum() == 10000);
+        assertTrue(allocs.stream().mapToLong(RefundAllocation::amount).sum() == 10000);
     }
 }

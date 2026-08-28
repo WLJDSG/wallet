@@ -1,11 +1,12 @@
 package com.wallet.pay.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import java.time.LocalDateTime;
 
 /**
  * 支付渠道配置（channel_config）：商户密钥等敏感配置落库，改库即生效（缓存 TTL 30 秒）。
  */
-public class ChannelConfig {
+public class ChannelConfig extends BaseEntity {
 
     private Long id;
     private String channelCode;
@@ -14,8 +15,6 @@ public class ChannelConfig {
     /** 渠道自定义配置 JSON（字段由各渠道的 *Config record 定义） */
     private String configJson;
     private String remark;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 
     public Long getId() {
         return id;
@@ -55,21 +54,5 @@ public class ChannelConfig {
 
     public void setRemark(String remark) {
         this.remark = remark;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
     }
 }

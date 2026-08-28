@@ -1,10 +1,10 @@
 package com.wallet.channel.core;
 
-import com.wallet.channel.ChannelServiceImpl;
-import com.wallet.contract.channel.enums.ActionType;
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.contract.channel.enums.PayState;
-import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.channel.serviceImpl.support.ChannelServiceImpl;
+import com.wallet.common.enums.ActionType;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.PayState;
+import com.wallet.common.enums.RefundState;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.model.CallbackRequest;
 import com.wallet.contract.channel.model.ConfirmRequest;
@@ -97,7 +97,7 @@ class PayFlowTest {
         channel.queryPaid = true;
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.pay(payRequest("O3").lastOutTradeNo(first.outTradeNo()).build()));
-        assertEquals(PayError.ORDER_HAS_PAID, e.error());
+        assertEquals(ErrorCode.ORDER_HAS_PAID, e.error());
     }
 
     /** 回调幂等：重复回调只推进一次状态、只发布一次事件，且每次都返回渠道应答 */
@@ -129,7 +129,7 @@ class PayFlowTest {
         PayResult result = flow.pay(payRequest("O6").build());
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.callback(callback("O6", result.outTradeNo())));
-        assertEquals(PayError.CALLBACK_QUERY_UNPAID, e.error());
+        assertEquals(ErrorCode.CALLBACK_QUERY_UNPAID, e.error());
         assertEquals(PayState.PAYING, trades.stateOf(result.outTradeNo()));
         assertEquals(0, events.paySuccess.size());
     }
@@ -157,7 +157,7 @@ class PayFlowTest {
         assertFalse(result.queryable(), "无 QueryAction 的渠道不应参与轮询");
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.query(new QueryRequest(PAY_ONLY, "O8", result.outTradeNo())));
-        assertEquals(PayError.PAYMENT_ACTION_UNSUPPORTED, e.error());
+        assertEquals(ErrorCode.PAYMENT_ACTION_UNSUPPORTED, e.error());
     }
 
     @Test
@@ -192,7 +192,7 @@ class PayFlowTest {
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.refund(RefundRequest.builder().channelCode(CHANNEL).orderNo("O11")
                 .outTradeNo(paid.outTradeNo()).refundOrderNo("R11").amount(100).build()));
-        assertEquals(PayError.CHANNEL_INVOKE_ERROR, e.error());
+        assertEquals(ErrorCode.CHANNEL_INVOKE_ERROR, e.error());
         assertEquals(RefundState.FAIL, refunds.stateOf("R11"));
     }
 
@@ -212,7 +212,7 @@ class PayFlowTest {
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.refund(RefundRequest.builder().channelCode(CHANNEL).orderNo("O13")
                 .outTradeNo(unpaid.outTradeNo()).refundOrderNo("R13").amount(100).build()));
-        assertEquals(PayError.ORDER_NOT_PAID, e.error());
+        assertEquals(ErrorCode.ORDER_NOT_PAID, e.error());
     }
 
     @Test
@@ -228,7 +228,7 @@ class PayFlowTest {
         channel.queryPaid = true;
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.cancel(CHANNEL, "O15", result.outTradeNo()));
-        assertEquals(PayError.ORDER_HAS_PAID, e.error());
+        assertEquals(ErrorCode.ORDER_HAS_PAID, e.error());
     }
 
     /** 回归用例：扣款确认幂等——重复调用不重复扣款、不重复发事件 */
@@ -282,7 +282,7 @@ class PayFlowTest {
     void missingTradeThrows() {
         ChannelException e = assertThrows(ChannelException.class,
             () -> flow.query(new QueryRequest(CHANNEL, "GHOST", "GHOST-T1")));
-        assertEquals(PayError.ORDER_DOES_NOT_EXIST, e.error());
+        assertEquals(ErrorCode.ORDER_DOES_NOT_EXIST, e.error());
     }
 
     @Test

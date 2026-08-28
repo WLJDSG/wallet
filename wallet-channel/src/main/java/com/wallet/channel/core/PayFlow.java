@@ -1,17 +1,17 @@
 package com.wallet.channel.core;
 
-import com.wallet.channel.action.CallbackAction;
-import com.wallet.channel.action.CancelAction;
-import com.wallet.channel.action.ConfirmAction;
-import com.wallet.channel.action.PayAction;
-import com.wallet.channel.action.QueryAction;
-import com.wallet.channel.action.RefundAction;
-import com.wallet.contract.channel.enums.ActionType;
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.channel.enums.PayEvent;
-import com.wallet.contract.channel.enums.PayState;
-import com.wallet.channel.enums.RefundEvent;
-import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.contract.channel.action.CallbackAction;
+import com.wallet.contract.channel.action.CancelAction;
+import com.wallet.contract.channel.action.ConfirmAction;
+import com.wallet.contract.channel.action.PayAction;
+import com.wallet.contract.channel.action.QueryAction;
+import com.wallet.contract.channel.action.RefundAction;
+import com.wallet.common.enums.ActionType;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.PayEvent;
+import com.wallet.common.enums.PayState;
+import com.wallet.common.enums.RefundEvent;
+import com.wallet.common.enums.RefundState;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.model.CallLog;
 import com.wallet.contract.channel.model.CallbackRequest;
@@ -83,7 +83,7 @@ public final class PayFlow {
         requireText(request.orderNo(), "orderNo");
         requireText(request.currency(), "currency");
         if (request.amount() <= 0) {
-            throw new ChannelException(PayError.PAY_PARAM_INVALID, "amount 必须为正数");
+            throw new ChannelException(ErrorCode.PAY_PARAM_INVALID, "amount 必须为正数");
         }
         String channel = request.channelCode();
         PayAction payAction = table.require(channel, ActionType.PAY);
@@ -136,7 +136,7 @@ public final class PayFlow {
             QueryResult query = callChannel(ActionType.QUERY, channel, request.orderNo(),
                 request.outTradeNo(), queryRequest, () -> queryAction.query(queryRequest));
             if (!query.paid()) {
-                throw new ChannelException(PayError.CALLBACK_QUERY_UNPAID,
+                throw new ChannelException(ErrorCode.CALLBACK_QUERY_UNPAID,
                     "outTradeNo=" + request.outTradeNo());
             }
             if (thirdOutTradeNo == null) {
@@ -190,7 +190,7 @@ public final class PayFlow {
         requireText(request.outTradeNo(), "outTradeNo");
         requireText(request.refundOrderNo(), "refundOrderNo");
         if (request.amount() <= 0) {
-            throw new ChannelException(PayError.REFUND_AMOUNT_INVALID, "amount=" + request.amount());
+            throw new ChannelException(ErrorCode.REFUND_AMOUNT_INVALID, "amount=" + request.amount());
         }
         String channel = request.channelCode();
         if (!request.outRefund()) {
@@ -200,11 +200,11 @@ public final class PayFlow {
 
         TradeInfo trade = findTrade(channel, request.orderNo(), request.outTradeNo());
         if (trade.state() != PayState.SUCCESS) {
-            throw new ChannelException(PayError.ORDER_NOT_PAID, "state=" + trade.state());
+            throw new ChannelException(ErrorCode.ORDER_NOT_PAID, "state=" + trade.state());
         }
         long refundable = trade.refundableAmount();
         if (refundable <= 0) {
-            throw new ChannelException(PayError.ORDER_REFUND_FINISH, "outTradeNo=" + request.outTradeNo());
+            throw new ChannelException(ErrorCode.ORDER_REFUND_FINISH, "outTradeNo=" + request.outTradeNo());
         }
         long amount = request.amount();
         if (amount > refundable) {
@@ -325,7 +325,7 @@ public final class PayFlow {
             QueryResult query = callChannel(ActionType.QUERY, channelCode, orderNo, outTradeNo, queryRequest,
                 () -> queryAction.query(queryRequest));
             if (query.paid()) {
-                throw new ChannelException(PayError.ORDER_HAS_PAID, "outTradeNo=" + outTradeNo);
+                throw new ChannelException(ErrorCode.ORDER_HAS_PAID, "outTradeNo=" + outTradeNo);
             }
         }
         TradeInfo trade = tradeStore.find(channelCode, orderNo, outTradeNo);
@@ -338,7 +338,7 @@ public final class PayFlow {
         boolean cancelled = callChannel(ActionType.CANCEL, channelCode, orderNo, outTradeNo, cancelRequest,
             () -> cancelAction.cancel(cancelRequest));
         if (!cancelled) {
-            throw new ChannelException(PayError.ORDER_PAYING_WAITE_REFUND, "outTradeNo=" + outTradeNo);
+            throw new ChannelException(ErrorCode.ORDER_PAYING_WAITE_REFUND, "outTradeNo=" + outTradeNo);
         }
         PayState closed = PayStateMachine.INSTANCE.transition(trade.state(), PayEvent.CLOSE);
         tradeStore.changeState(outTradeNo, trade.state(), closed, null);
@@ -347,7 +347,7 @@ public final class PayFlow {
     private TradeInfo findTrade(String channelCode, String orderNo, String outTradeNo) {
         TradeInfo trade = tradeStore.find(channelCode, orderNo, outTradeNo);
         if (trade == null) {
-            throw new ChannelException(PayError.ORDER_DOES_NOT_EXIST, "outTradeNo=" + outTradeNo);
+            throw new ChannelException(ErrorCode.ORDER_DOES_NOT_EXIST, "outTradeNo=" + outTradeNo);
         }
         return trade;
     }
@@ -368,7 +368,7 @@ public final class PayFlow {
             throw e;
         } catch (RuntimeException e) {
             error = e;
-            throw new ChannelException(PayError.CHANNEL_INVOKE_ERROR,
+            throw new ChannelException(ErrorCode.CHANNEL_INVOKE_ERROR,
                 "channel=" + channelCode + ", action=" + action + ", cause=" + e.getMessage(), e);
         } finally {
             writeLog(action, channelCode, orderNo, outTradeNo, requestForLog, response, error,
@@ -388,7 +388,7 @@ public final class PayFlow {
 
     private static void requireText(String value, String field) {
         if (value == null || value.trim().isEmpty()) {
-            throw new ChannelException(PayError.PAY_PARAM_INVALID, field + " 不能为空");
+            throw new ChannelException(ErrorCode.PAY_PARAM_INVALID, field + " 不能为空");
         }
     }
 

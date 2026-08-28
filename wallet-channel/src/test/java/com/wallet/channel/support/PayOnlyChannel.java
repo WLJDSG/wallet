@@ -1,7 +1,7 @@
 package com.wallet.channel.support;
 
-import com.wallet.channel.action.CallbackAction;
-import com.wallet.channel.action.PayAction;
+import com.wallet.contract.channel.action.CallbackAction;
+import com.wallet.contract.channel.action.PayAction;
 import com.wallet.contract.channel.model.CallbackRequest;
 import com.wallet.contract.channel.model.CallbackResult;
 import com.wallet.contract.channel.model.PayRequest;

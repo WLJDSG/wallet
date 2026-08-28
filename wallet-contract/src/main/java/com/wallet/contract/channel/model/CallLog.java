@@ -1,6 +1,6 @@
 package com.wallet.contract.channel.model;
 
-import com.wallet.contract.channel.enums.ActionType;
+import com.wallet.common.enums.ActionType;
 
 /**
  * 渠道调用日志（编排层在每次渠道调用前后组装，交给 CallLogWriter 落地）。

@@ -1,6 +1,6 @@
 package com.wallet.contract.pay.model;
 
-import com.wallet.contract.pay.enums.PayType;
+import com.wallet.common.enums.PayType;
 
 /**
  * 创建支付单时的分段（服务层入参，基础校验在 wallet-app 的 PartItemReq）。

@@ -1,15 +1,15 @@
 package com.wallet.pay.adapter;
 
 import lombok.AllArgsConstructor;
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.contract.channel.enums.PayState;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.PayState;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.model.PayRequest;
 import com.wallet.contract.channel.model.TradeInfo;
 import com.wallet.contract.channel.spi.TradeStore;
 import com.wallet.pay.entity.PayPart;
-import com.wallet.contract.pay.enums.PayType;
-import com.wallet.pay.state.PartState;
+import com.wallet.common.enums.PayType;
+import com.wallet.common.enums.PartState;
 import com.wallet.pay.mapper.PayPartMapper;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +29,7 @@ public class TradeStoreImpl implements TradeStore {
     public TradeInfo create(PayRequest request, long amount) {
         PayPart part = findChannelPart(request.orderNo());
         if (part == null) {
-            throw new ChannelException(PayError.ORDER_DOES_NOT_EXIST,
+            throw new ChannelException(ErrorCode.ORDER_DOES_NOT_EXIST,
                 "orderNo=" + request.orderNo() + " 没有 CHANNEL 分段");
         }
         return toInfo(part);

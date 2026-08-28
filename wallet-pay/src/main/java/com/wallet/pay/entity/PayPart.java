@@ -1,8 +1,9 @@
 package com.wallet.pay.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.wallet.pay.state.PartState;
-import com.wallet.contract.pay.enums.PayType;
+import com.wallet.common.enums.PartState;
+import com.wallet.common.enums.PayType;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
  */
 @TableName("pay_part")
 @Schema(description = "支付分段")
-public class PayPart {
+public class PayPart extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     @Schema(description = "主键")
@@ -46,10 +47,6 @@ public class PayPart {
     private Long refundedAmount;
     @Schema(description = "支付完成时间")
     private LocalDateTime payTime;
-    @Schema(description = "创建时间")
-    private LocalDateTime createTime;
-    @Schema(description = "更新时间")
-    private LocalDateTime updateTime;
 
     public Long getId() {
         return id;
@@ -161,21 +158,5 @@ public class PayPart {
 
     public void setPayTime(LocalDateTime payTime) {
         this.payTime = payTime;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
     }
 }

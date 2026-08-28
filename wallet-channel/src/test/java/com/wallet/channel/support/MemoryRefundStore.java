@@ -1,6 +1,6 @@
 package com.wallet.channel.support;
 
-import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.common.enums.RefundState;
 import com.wallet.contract.channel.model.RefundInfo;
 import com.wallet.contract.channel.spi.RefundStore;
 

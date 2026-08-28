@@ -1,8 +1,8 @@
 package com.wallet.pay.adapter;
 
 import lombok.AllArgsConstructor;
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.RefundState;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.model.RefundInfo;
 import com.wallet.contract.channel.spi.RefundStore;
@@ -25,7 +25,7 @@ public class RefundStoreImpl implements RefundStore {
     public RefundInfo create(String outTradeNo, String refundOrderNo, long amount, String currency) {
         RefundPart part = refundPartMapper.findByRefundPartNo(refundOrderNo);
         if (part == null) {
-            throw new ChannelException(PayError.ORDER_DOES_NOT_EXIST, "refundPartNo=" + refundOrderNo);
+            throw new ChannelException(ErrorCode.ORDER_DOES_NOT_EXIST, "refundPartNo=" + refundOrderNo);
         }
         return new RefundInfo(refundOrderNo, outTradeNo, part.getState(), amount, currency);
     }

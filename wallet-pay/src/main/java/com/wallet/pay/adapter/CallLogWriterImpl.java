@@ -36,7 +36,6 @@ public class CallLogWriterImpl implements CallLogWriter {
         row.setErrorMsg(log.error());
         row.setCostMs((int) log.costMs());
         row.setTraceId(TraceIds.current());
-        row.setCreateTime(LocalDateTime.now());
         channelLogMapper.insert(row);
     }
 

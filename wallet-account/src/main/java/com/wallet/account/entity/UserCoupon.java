@@ -1,11 +1,12 @@
 package com.wallet.account.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
-import com.wallet.contract.account.enums.CouponType;
+import com.wallet.common.enums.CouponType;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
  */
 @TableName("user_coupon")
 @Schema(description = "用户券")
-public class UserCoupon {
+public class UserCoupon extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     @Schema(description = "用户券 ID")
@@ -44,8 +45,6 @@ public class UserCoupon {
     private LocalDateTime useTime;
     @Schema(description = "过期时间")
     private LocalDateTime expireTime;
-    @Schema(description = "领取时间")
-    private LocalDateTime createTime;
 
     public Long getId() {
         return id;
@@ -149,13 +148,5 @@ public class UserCoupon {
 
     public void setExpireTime(LocalDateTime expireTime) {
         this.expireTime = expireTime;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
     }
 }

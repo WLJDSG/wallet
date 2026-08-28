@@ -1,5 +1,6 @@
 package com.wallet.account.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
  * 积分流水。biz_no + type 唯一，写流水是幂等操作。
  */
 @TableName("point_log")
-public class PointLog {
+public class PointLog extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -21,7 +22,6 @@ public class PointLog {
     private Long afterCount;
     private String orderNo;
     private String remark;
-    private LocalDateTime createTime;
 
     public PointLog() {
     }
@@ -99,13 +99,5 @@ public class PointLog {
 
     public void setRemark(String remark) {
         this.remark = remark;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
     }
 }

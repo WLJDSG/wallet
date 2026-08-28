@@ -24,7 +24,8 @@ import java.util.TimeZone;
  *
  * <ul>
  *   <li>时间：LocalDateTime ⇄ {@value #DATE_TIME_PATTERN}，LocalDate ⇄ {@value #DATE_PATTERN}，
- *       LocalTime ⇄ {@value #TIME_PATTERN}；java.util.Date 同 {@value #DATE_TIME_PATTERN}，时区东八区；
+ *       LocalTime ⇄ {@value #TIME_PATTERN}；java.util.Date 同 {@value #DATE_TIME_PATTERN}；
+ *       <b>系统时间统一 UTC</b>（0 时区），客户端按自己的时区转换展示；
  *       关闭时间戳输出（WRITE_DATES_AS_TIMESTAMPS）。</li>
  *   <li>枚举：出参默认输出 name()（带 @JsonValue 的按其值输出）；入参大小写不敏感
  *       （ACCEPT_CASE_INSENSITIVE_ENUMS），非法值仍然报错快速失败。</li>
@@ -47,7 +48,7 @@ public class JacksonConfig {
         DateTimeFormatter time = DateTimeFormatter.ofPattern(TIME_PATTERN);
         return builder -> builder
             .simpleDateFormat(DATE_TIME_PATTERN)
-            .timeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+            .timeZone(TimeZone.getTimeZone("UTC"))
             .serializers(
                 new LocalDateTimeSerializer(dateTime),
                 new LocalDateSerializer(date),

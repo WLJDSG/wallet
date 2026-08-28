@@ -1,6 +1,6 @@
 package com.wallet.contract.channel.model;
 
-import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.common.enums.RefundState;
 
 /**
  * 退款单快照。

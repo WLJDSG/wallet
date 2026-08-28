@@ -1,4 +1,6 @@
 package com.wallet.pay.state;
+import com.wallet.common.enums.OrderEvent;
+import com.wallet.common.enums.OrderState;
 
 import org.junit.jupiter.api.Test;
 

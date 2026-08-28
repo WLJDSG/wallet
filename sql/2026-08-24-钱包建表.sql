@@ -1,5 +1,8 @@
 -- wallet 钱包工程建表脚本（MySQL 8，utf8mb4）
 -- 金额一律 BIGINT 单位分；状态一律 VARCHAR 存枚举名。
+-- 时间统一 UTC：create_time/update_time 由应用（AuditMetaObjectHandler）以 UTC 填充，DB 默认值仅兜底，
+-- 建议 MySQL 服务器时区配置为 UTC（my.cnf default-time-zone='+00:00'）。
+-- 审计列（BaseEntity）：create_time/update_time/deleted/create_by/update_by，所有业务表统一。
 
 -- 1. 钱包账户（余额 + 积分合一）
 CREATE TABLE IF NOT EXISTS wallet_account (
@@ -10,6 +13,9 @@ CREATE TABLE IF NOT EXISTS wallet_account (
   status       TINYINT      NOT NULL DEFAULT 1 COMMENT '1正常 0冻结',
   create_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_user (user_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='钱包账户';
 
@@ -24,6 +30,10 @@ CREATE TABLE IF NOT EXISTS money_log (
   order_no      VARCHAR(32)          COMMENT '关联支付单号',
   remark        VARCHAR(255),
   create_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_biz (biz_no, type),
   KEY idx_user (user_id, id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='余额流水';
@@ -39,6 +49,10 @@ CREATE TABLE IF NOT EXISTS point_log (
   order_no     VARCHAR(32),
   remark       VARCHAR(255),
   create_time  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_biz (biz_no, type),
   KEY idx_user (user_id, id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='积分流水';
@@ -56,7 +70,11 @@ CREATE TABLE IF NOT EXISTS coupon (
   taken_count INT         NOT NULL DEFAULT 0 COMMENT '已领取量',
   expire_time DATETIME    NOT NULL,
   status      TINYINT     NOT NULL DEFAULT 1 COMMENT '1上架 0下架',
-  create_time DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+  create_time DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人'
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='券模板';
 
 -- 5. 用户券
@@ -75,6 +93,10 @@ CREATE TABLE IF NOT EXISTS user_coupon (
   use_time     DATETIME,
   expire_time  DATETIME    NOT NULL,
   create_time  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   KEY idx_user (user_id, status)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='用户券';
 
@@ -87,6 +109,9 @@ CREATE TABLE IF NOT EXISTS pay_password (
   version       INT         NOT NULL DEFAULT 1 COMMENT '改密自增',
   create_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_user (user_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付密码';
 
@@ -108,6 +133,9 @@ CREATE TABLE IF NOT EXISTS pay_order (
   fail_reason       VARCHAR(255),
   create_time       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_order (order_no),
   UNIQUE KEY uk_app_biz (app_id, biz_order_no) COMMENT '同接入方业务单号防重复建单',
   KEY idx_user (user_id, id),
@@ -133,6 +161,9 @@ CREATE TABLE IF NOT EXISTS pay_part (
   pay_time        DATETIME,
   create_time     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_part (part_no),
   KEY idx_order (order_no)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付分段';
@@ -151,6 +182,9 @@ CREATE TABLE IF NOT EXISTS refund_order (
   finish_time   DATETIME,
   create_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_refund (refund_no),
   KEY idx_order (order_no)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='退款单';
@@ -168,6 +202,9 @@ CREATE TABLE IF NOT EXISTS refund_part (
   state             VARCHAR(16) NOT NULL DEFAULT 'INIT' COMMENT 'INIT/REFUNDING/SUCCESS/FAIL',
   create_time       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_no (refund_part_no),
   KEY idx_refund (refund_no),
   KEY idx_part (part_no)
@@ -186,6 +223,10 @@ CREATE TABLE IF NOT EXISTS channel_log (
   cost_ms       INT         NOT NULL DEFAULT 0,
   trace_id      VARCHAR(64)          COMMENT '链路追踪ID，与应用日志/响应头 X-Trace-Id 对应',
   create_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   KEY idx_order (order_no),
   KEY idx_trace (trace_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='渠道调用日志';
@@ -200,6 +241,9 @@ CREATE TABLE IF NOT EXISTS channel_config (
   remark       VARCHAR(255)          COMMENT '备注',
   create_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+  create_by    VARCHAR(64)           COMMENT '创建人',
+  update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_channel (channel_code)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付渠道配置';
 

@@ -1,5 +1,6 @@
 package com.wallet.account.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
  * status：ENABLED / DISABLED；version 改密自增（可用于踢旧票据）。
  */
 @TableName("pay_password")
-public class PayPassword {
+public class PayPassword extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -19,8 +20,6 @@ public class PayPassword {
     private String passwordHash;
     private String status;
     private Integer version;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 
     public Long getId() {
         return id;
@@ -60,21 +59,5 @@ public class PayPassword {
 
     public void setVersion(Integer version) {
         this.version = version;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
     }
 }

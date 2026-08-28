@@ -1,7 +1,7 @@
 package com.wallet.pay.adapter;
 
 import com.wallet.contract.channel.spi.PayListener;
-import com.wallet.pay.service.OrderFinisher;
+import com.wallet.contract.pay.OrderFinisher;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

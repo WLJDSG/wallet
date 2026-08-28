@@ -1,15 +1,15 @@
 package com.wallet.account.coupon;
 
 import com.wallet.account.entity.UserCoupon;
-import com.wallet.contract.account.enums.CouponType;
-import com.wallet.account.error.AccountError;
-import com.wallet.account.service.coupon.CouponRuleEngine;
-import com.wallet.account.service.coupon.rule.DeductBoundsRule;
-import com.wallet.account.service.coupon.rule.DiscountDeductRule;
-import com.wallet.account.service.coupon.rule.FullCutDeductRule;
-import com.wallet.account.service.coupon.rule.MaxDeductCapRule;
-import com.wallet.account.service.coupon.rule.MinAmountRule;
-import com.wallet.common.error.BizException;
+import com.wallet.common.enums.CouponType;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.account.serviceImpl.coupon.CouponRuleEngine;
+import com.wallet.account.serviceImpl.coupon.rule.DeductBoundsRule;
+import com.wallet.account.serviceImpl.coupon.rule.DiscountDeductRule;
+import com.wallet.account.serviceImpl.coupon.rule.FullCutDeductRule;
+import com.wallet.account.serviceImpl.coupon.rule.MaxDeductCapRule;
+import com.wallet.account.serviceImpl.coupon.rule.MinAmountRule;
+import com.wallet.common.error.CommonException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -45,9 +45,9 @@ class CouponRuleEngineTest {
     @Test
     void minAmountRejected() {
         // 满100减10：订单 80 元 → 未达门槛
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> engine.calcDeduct(coupon(CouponType.FULL_CUT, 1000, 10000, 0, 0), 8000));
-        assertEquals(AccountError.COUPON_NOT_MATCH.code(), e.getCode());
+        assertEquals(ErrorCode.COUPON_NOT_MATCH.code(), e.getCode());
     }
 
     @Test
@@ -71,9 +71,9 @@ class CouponRuleEngineTest {
     @Test
     void zeroDeductRejected() {
         // 非法折扣率（100）→ 抵扣 0 → 拒绝
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> engine.calcDeduct(coupon(CouponType.DISCOUNT, 0, 0, 100, 0), 10000));
-        assertEquals(AccountError.COUPON_NOT_MATCH.code(), e.getCode());
+        assertEquals(ErrorCode.COUPON_NOT_MATCH.code(), e.getCode());
     }
 
     @Test

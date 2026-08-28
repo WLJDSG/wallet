@@ -1,7 +1,7 @@
 package com.wallet.app.limit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wallet.common.error.CommonError;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.common.result.ApiResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -96,8 +96,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         response.setStatus(429);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write(objectMapper.writeValueAsString(
-            ApiResult.fail(CommonError.RATE_LIMITED.code(),
-                CommonError.RATE_LIMITED.message() + "（" + dim + " 限流）")));
+            ApiResult.fail(ErrorCode.RATE_LIMITED.code(),
+                ErrorCode.RATE_LIMITED.message() + "（" + dim + " 限流）")));
     }
 
     /** 客户端 IP：优先代理头（网关/LB 后面部署时），否则远端地址 */

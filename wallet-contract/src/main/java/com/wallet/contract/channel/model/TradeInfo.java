@@ -1,6 +1,6 @@
 package com.wallet.contract.channel.model;
 
-import com.wallet.contract.channel.enums.PayState;
+import com.wallet.common.enums.PayState;
 
 /**
  * 交易单快照（调用方持久化模型在内核侧的只读视图；钱包工程里即三方支付分段）。

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.wallet.pay.entity.PayOrder;
-import com.wallet.pay.state.OrderState;
+import com.wallet.common.enums.OrderState;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;

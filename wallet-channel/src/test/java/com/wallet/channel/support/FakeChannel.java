@@ -1,11 +1,11 @@
 package com.wallet.channel.support;
 
-import com.wallet.channel.action.CallbackAction;
-import com.wallet.channel.action.CancelAction;
-import com.wallet.channel.action.ConfirmAction;
-import com.wallet.channel.action.PayAction;
-import com.wallet.channel.action.QueryAction;
-import com.wallet.channel.action.RefundAction;
+import com.wallet.contract.channel.action.CallbackAction;
+import com.wallet.contract.channel.action.CancelAction;
+import com.wallet.contract.channel.action.ConfirmAction;
+import com.wallet.contract.channel.action.PayAction;
+import com.wallet.contract.channel.action.QueryAction;
+import com.wallet.contract.channel.action.RefundAction;
 import com.wallet.contract.channel.model.CallbackRequest;
 import com.wallet.contract.channel.model.CallbackResult;
 import com.wallet.contract.channel.model.CancelRequest;

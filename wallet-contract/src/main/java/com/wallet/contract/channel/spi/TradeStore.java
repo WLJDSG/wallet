@@ -1,6 +1,6 @@
 package com.wallet.contract.channel.spi;
 
-import com.wallet.contract.channel.enums.PayState;
+import com.wallet.common.enums.PayState;
 import com.wallet.contract.channel.model.PayRequest;
 import com.wallet.contract.channel.model.TradeInfo;
 

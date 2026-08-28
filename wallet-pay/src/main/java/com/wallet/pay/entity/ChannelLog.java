@@ -1,5 +1,6 @@
 package com.wallet.pay.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
  * 渠道调用日志。
  */
 @TableName("channel_log")
-public class ChannelLog {
+public class ChannelLog extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -24,7 +25,6 @@ public class ChannelLog {
     private Integer costMs;
     /** 链路追踪 ID，与应用日志/响应头 X-Trace-Id 对应 */
     private String traceId;
-    private LocalDateTime createTime;
 
     public Long getId() {
         return id;
@@ -104,13 +104,5 @@ public class ChannelLog {
 
     public void setTraceId(String traceId) {
         this.traceId = traceId;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
     }
 }

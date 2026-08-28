@@ -1,8 +1,8 @@
 package com.wallet.channel.state;
 
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.channel.enums.RefundEvent;
-import com.wallet.contract.channel.enums.RefundState;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.RefundEvent;
+import com.wallet.common.enums.RefundState;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.state.StateMachine;
 
@@ -38,7 +38,7 @@ public final class RefundStateMachine implements StateMachine<RefundState, Refun
     @Override
     public RefundState transition(RefundState source, RefundEvent event) {
         if (!canTransition(source, event)) {
-            throw new ChannelException(PayError.ILLEGAL_CHANGE_STATUS, source + " -> " + event);
+            throw new ChannelException(ErrorCode.ILLEGAL_CHANGE_STATUS, source + " -> " + event);
         }
         return TABLE.get(source).get(event);
     }

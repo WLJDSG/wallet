@@ -3,7 +3,7 @@ package com.wallet.pay.job;
 import com.wallet.common.trace.TraceIds;
 import com.wallet.pay.entity.PayOrder;
 import com.wallet.pay.mapper.PayOrderMapper;
-import com.wallet.pay.service.PayServiceImpl;
+import com.wallet.pay.serviceImpl.pay.PayServiceImpl;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

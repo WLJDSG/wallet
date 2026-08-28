@@ -12,7 +12,7 @@ public interface PayValidator {
     /** 适用的校验场景 */
     Set<PayScene> scenes();
 
-    /** 校验，不通过抛 BizException（约定：归属 10 / 状态 20 / 明细 30） */
+    /** 校验，不通过抛 CommonException（约定：归属 10 / 状态 20 / 明细 30） */
     void validate(PayValidationContext context);
 
     /** 链内顺序，小的先执行 */

@@ -2,10 +2,10 @@ package com.wallet.account.password;
 
 import com.wallet.account.config.PasswordProperties;
 import com.wallet.account.entity.PayPassword;
-import com.wallet.account.error.AccountError;
-import com.wallet.account.service.password.PasswordServiceImpl;
-import com.wallet.account.service.password.PasswordStore;
-import com.wallet.common.error.BizException;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.account.serviceImpl.password.PasswordServiceImpl;
+import com.wallet.account.serviceImpl.password.PasswordStore;
+import com.wallet.common.error.CommonException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,9 +78,9 @@ class PasswordServiceTest {
     @Test
     void wrongPasswordThrows() {
         service.set(1002L, "123456", null);
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> service.verifyAndIssue(1002L, "wrong", "O1", 10000));
-        assertEquals(AccountError.PASSWORD_WRONG.code(), e.getCode());
+        assertEquals(ErrorCode.PASSWORD_WRONG.code(), e.getCode());
     }
 
     @Test
@@ -89,13 +89,13 @@ class PasswordServiceTest {
         for (int i = 0; i < 3; i++) {
             try {
                 service.verifyAndIssue(1003L, "bad", "O1", 10000);
-            } catch (BizException expected) {
+            } catch (CommonException expected) {
                 // 连续失败，忽略
             }
         }
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> service.verifyAndIssue(1003L, "123456", "O1", 10000));
-        assertEquals(AccountError.PASSWORD_LOCKED.code(), e.getCode(), "连续 3 次错误后即使密码正确也应锁定");
+        assertEquals(ErrorCode.PASSWORD_LOCKED.code(), e.getCode(), "连续 3 次错误后即使密码正确也应锁定");
     }
 
     @Test
@@ -103,25 +103,25 @@ class PasswordServiceTest {
         service.set(1004L, "123456", null);
         String ticket = service.verifyAndIssue(1004L, "123456", "O1", 10000);
         service.consumeTicket(ticket, 1004L, "O1", 10000);
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> service.consumeTicket(ticket, 1004L, "O1", 10000));
-        assertEquals(AccountError.TICKET_INVALID.code(), e.getCode(), "票据只能消费一次");
+        assertEquals(ErrorCode.TICKET_INVALID.code(), e.getCode(), "票据只能消费一次");
     }
 
     @Test
     void ticketRejectsMismatchedOrder() {
         service.set(1005L, "123456", null);
         String ticket = service.verifyAndIssue(1005L, "123456", "O1", 10000);
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> service.consumeTicket(ticket, 1005L, "O2", 10000));
-        assertEquals(AccountError.TICKET_INVALID.code(), e.getCode(), "订单号不匹配应拒绝");
+        assertEquals(ErrorCode.TICKET_INVALID.code(), e.getCode(), "订单号不匹配应拒绝");
     }
 
     @Test
     void verifyWithoutSettingThrows() {
-        BizException e = assertThrows(BizException.class,
+        CommonException e = assertThrows(CommonException.class,
             () -> service.verifyAndIssue(1006L, "123456", "O1", 10000));
-        assertEquals(AccountError.PASSWORD_NOT_SET.code(), e.getCode());
+        assertEquals(ErrorCode.PASSWORD_NOT_SET.code(), e.getCode());
     }
 
     /** 内存版密码存储 */

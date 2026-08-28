@@ -1,8 +1,8 @@
 package com.wallet.pay.validate.validator;
 
-import com.wallet.common.error.BizException;
-import com.wallet.pay.error.OrderError;
-import com.wallet.pay.state.OrderState;
+import com.wallet.common.error.CommonException;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.OrderState;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
 import com.wallet.pay.validate.PayValidator;
@@ -25,7 +25,7 @@ public class SubmitStateValidator implements PayValidator {
     public void validate(PayValidationContext context) {
         OrderState state = context.order().getState();
         if (state == OrderState.CLOSED || state == OrderState.FAIL) {
-            throw new BizException(OrderError.ORDER_STATE_INVALID, "state=" + state);
+            throw new CommonException(ErrorCode.ORDER_STATE_INVALID, "state=" + state);
         }
     }
 

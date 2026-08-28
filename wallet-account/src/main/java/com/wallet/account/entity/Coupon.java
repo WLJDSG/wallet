@@ -1,10 +1,11 @@
 package com.wallet.account.entity;
 
+import com.wallet.common.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
-import com.wallet.contract.account.enums.CouponType;
+import com.wallet.common.enums.CouponType;
 
 import java.time.LocalDateTime;
 
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
  * 优惠券模板（满减券）。
  */
 @TableName("coupon")
-public class Coupon {
+public class Coupon extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -30,7 +31,6 @@ public class Coupon {
     private Integer takenCount;
     private LocalDateTime expireTime;
     private Integer status;
-    private LocalDateTime createTime;
 
     public Long getId() {
         return id;
@@ -118,13 +118,5 @@ public class Coupon {
 
     public void setStatus(Integer status) {
         this.status = status;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
     }
 }

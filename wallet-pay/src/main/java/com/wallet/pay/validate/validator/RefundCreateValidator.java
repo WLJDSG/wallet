@@ -1,8 +1,8 @@
 package com.wallet.pay.validate.validator;
 
-import com.wallet.common.error.BizException;
-import com.wallet.pay.error.OrderError;
-import com.wallet.pay.state.OrderState;
+import com.wallet.common.error.CommonException;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.OrderState;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
 import com.wallet.pay.validate.PayValidator;
@@ -24,14 +24,14 @@ public class RefundCreateValidator implements PayValidator {
     @Override
     public void validate(PayValidationContext context) {
         if (context.order().getState() != OrderState.SUCCESS) {
-            throw new BizException(OrderError.ORDER_NOT_PAID, context.orderNo());
+            throw new CommonException(ErrorCode.ORDER_NOT_PAID, context.orderNo());
         }
         long amount = context.refundAmount();
         if (amount <= 0) {
-            throw new BizException(OrderError.REFUND_AMOUNT_INVALID, "amount=" + amount);
+            throw new CommonException(ErrorCode.REFUND_AMOUNT_INVALID, "amount=" + amount);
         }
         if (context.order().getRefundableAmount() < amount) {
-            throw new BizException(OrderError.REFUND_TOO_MUCH,
+            throw new CommonException(ErrorCode.REFUND_TOO_MUCH,
                 "申请 " + amount + "，可退 " + context.order().getRefundableAmount());
         }
     }

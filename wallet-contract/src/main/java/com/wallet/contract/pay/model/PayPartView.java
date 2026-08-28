@@ -1,6 +1,6 @@
 package com.wallet.contract.pay.model;
 
-import com.wallet.contract.pay.enums.PayType;
+import com.wallet.common.enums.PayType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;

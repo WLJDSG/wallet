@@ -1,9 +1,9 @@
 package com.wallet.pay.validate.validator;
 
 import com.wallet.contract.account.CouponService;
-import com.wallet.common.error.BizException;
+import com.wallet.common.error.CommonException;
 import com.wallet.pay.config.PayProperties;
-import com.wallet.pay.error.OrderError;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.contract.pay.model.PartItem;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
@@ -37,21 +37,21 @@ public class CreatePartValidator implements PayValidator {
             switch (item.payType()) {
                 case COUPON -> {
                     if (item.userCouponId() == null) {
-                        throw new BizException(OrderError.PART_INVALID, "券段缺少 userCouponId");
+                        throw new CommonException(ErrorCode.PART_INVALID, "券段缺少 userCouponId");
                     }
                     long deduct = couponService.evaluateDeduct(context.userId(), item.userCouponId(),
                         totalAmount);
                     if (deduct != item.amount()) {
-                        throw new BizException(OrderError.PART_INVALID, "券段金额应为 " + deduct);
+                        throw new CommonException(ErrorCode.PART_INVALID, "券段金额应为 " + deduct);
                     }
                 }
                 case POINT -> {
                     if (item.pointCount() == null || item.pointCount() <= 0) {
-                        throw new BizException(OrderError.PART_INVALID, "积分段缺少 pointCount");
+                        throw new CommonException(ErrorCode.PART_INVALID, "积分段缺少 pointCount");
                     }
                     long expectAmount = item.pointCount() * 100 / payProperties.getPointsPerYuan();
                     if (expectAmount != item.amount()) {
-                        throw new BizException(OrderError.PART_INVALID,
+                        throw new CommonException(ErrorCode.PART_INVALID,
                             "积分段金额应为 " + expectAmount + "（" + item.pointCount() + " 积分按 "
                                 + payProperties.getPointsPerYuan() + " 积分/元折算）");
                     }
@@ -61,7 +61,7 @@ public class CreatePartValidator implements PayValidator {
                 }
                 case CHANNEL -> {
                     if (item.channelCode() == null || item.channelCode().trim().isEmpty()) {
-                        throw new BizException(OrderError.PART_INVALID, "三方段缺少 channelCode");
+                        throw new CommonException(ErrorCode.PART_INVALID, "三方段缺少 channelCode");
                     }
                 }
             }

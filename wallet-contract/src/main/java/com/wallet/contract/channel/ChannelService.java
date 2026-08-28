@@ -1,6 +1,6 @@
 package com.wallet.contract.channel;
 
-import com.wallet.contract.channel.enums.ActionType;
+import com.wallet.common.enums.ActionType;
 import com.wallet.contract.channel.model.CallbackRequest;
 import com.wallet.contract.channel.model.ConfirmRequest;
 import com.wallet.contract.channel.model.PayRequest;

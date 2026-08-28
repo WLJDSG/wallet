@@ -1,14 +1,14 @@
 package com.wallet.channel.core;
 
-import com.wallet.channel.action.CallbackAction;
-import com.wallet.channel.action.CancelAction;
-import com.wallet.channel.action.Channel;
-import com.wallet.channel.action.ConfirmAction;
-import com.wallet.channel.action.PayAction;
-import com.wallet.channel.action.QueryAction;
-import com.wallet.channel.action.RefundAction;
-import com.wallet.contract.channel.enums.ActionType;
-import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.action.CallbackAction;
+import com.wallet.contract.channel.action.CancelAction;
+import com.wallet.contract.channel.action.Channel;
+import com.wallet.contract.channel.action.ConfirmAction;
+import com.wallet.contract.channel.action.PayAction;
+import com.wallet.contract.channel.action.QueryAction;
+import com.wallet.contract.channel.action.RefundAction;
+import com.wallet.common.enums.ActionType;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.contract.channel.error.ChannelException;
 
 import java.util.Collection;
@@ -118,7 +118,7 @@ public final class ChannelTable {
         Map<ActionType, Channel> actions = table.get(channelCode);
         Channel channel = actions == null ? null : actions.get(action);
         if (channel == null) {
-            throw new ChannelException(PayError.PAYMENT_ACTION_UNSUPPORTED,
+            throw new ChannelException(ErrorCode.PAYMENT_ACTION_UNSUPPORTED,
                 "channel=" + channelCode + ", action=" + action);
         }
         return (T) channel;

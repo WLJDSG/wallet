@@ -1,7 +1,7 @@
 package com.wallet.pay.validate.validator;
 
-import com.wallet.common.error.BizException;
-import com.wallet.pay.error.OrderError;
+import com.wallet.common.error.CommonException;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
 import com.wallet.pay.validate.PayValidator;
@@ -24,10 +24,10 @@ public class OrderOwnershipValidator implements PayValidator {
     @Override
     public void validate(PayValidationContext context) {
         if (context.order() == null) {
-            throw new BizException(OrderError.ORDER_NOT_FOUND, context.orderNo());
+            throw new CommonException(ErrorCode.ORDER_NOT_FOUND, context.orderNo());
         }
         if (!context.order().getUserId().equals(context.userId())) {
-            throw new BizException(OrderError.ORDER_NOT_OWNED, context.orderNo());
+            throw new CommonException(ErrorCode.ORDER_NOT_OWNED, context.orderNo());
         }
     }
 

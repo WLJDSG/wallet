@@ -1,8 +1,8 @@
 package com.wallet.channel.state;
 
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.channel.enums.PayEvent;
-import com.wallet.contract.channel.enums.PayState;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.PayEvent;
+import com.wallet.common.enums.PayState;
 import com.wallet.contract.channel.error.ChannelException;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +37,7 @@ class PayStateMachineTest {
     void illegalTransitionThrowsTypedException() {
         ChannelException e = assertThrows(ChannelException.class,
             () -> machine.transition(PayState.SUCCESS, PayEvent.PAY_SUCCESS));
-        assertEquals(PayError.ILLEGAL_CHANGE_STATUS, e.error());
+        assertEquals(ErrorCode.ILLEGAL_CHANGE_STATUS, e.error());
         assertTrue(e.detail().contains("SUCCESS"));
     }
 }

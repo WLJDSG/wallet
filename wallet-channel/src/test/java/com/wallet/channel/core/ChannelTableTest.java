@@ -1,8 +1,8 @@
 package com.wallet.channel.core;
 
-import com.wallet.channel.action.QueryAction;
-import com.wallet.contract.channel.enums.ActionType;
-import com.wallet.contract.channel.enums.PayError;
+import com.wallet.contract.channel.action.QueryAction;
+import com.wallet.common.enums.ActionType;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.model.QueryRequest;
 import com.wallet.contract.channel.model.QueryResult;
@@ -33,7 +33,7 @@ class ChannelTableTest {
         ChannelTable table = new ChannelTable(List.of(new FakeChannel("MOCK")));
         ChannelException e = assertThrows(ChannelException.class,
             () -> table.require("GHOST", ActionType.QUERY));
-        assertEquals(PayError.PAYMENT_ACTION_UNSUPPORTED, e.error());
+        assertEquals(ErrorCode.PAYMENT_ACTION_UNSUPPORTED, e.error());
         assertTrue(e.detail().contains("GHOST"));
         assertTrue(e.detail().contains("QUERY"));
     }

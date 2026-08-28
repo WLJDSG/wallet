@@ -1,7 +1,9 @@
 package com.wallet.pay.state;
+import com.wallet.common.enums.OrderEvent;
+import com.wallet.common.enums.OrderState;
 
 import com.wallet.contract.channel.error.ChannelException;
-import com.wallet.contract.channel.enums.PayError;
+import com.wallet.common.error.ErrorCode;
 import com.wallet.contract.channel.state.StateMachine;
 
 import java.util.Map;
@@ -37,7 +39,7 @@ public final class OrderStateMachine implements StateMachine<OrderState, OrderEv
     @Override
     public OrderState transition(OrderState source, OrderEvent event) {
         if (!canTransition(source, event)) {
-            throw new ChannelException(PayError.ILLEGAL_CHANGE_STATUS, source + " -> " + event);
+            throw new ChannelException(ErrorCode.ILLEGAL_CHANGE_STATUS, source + " -> " + event);
         }
         return TABLE.get(source).get(event);
     }

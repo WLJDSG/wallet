@@ -1,8 +1,8 @@
 package com.wallet.channel.state;
 
-import com.wallet.contract.channel.enums.PayError;
-import com.wallet.channel.enums.PayEvent;
-import com.wallet.contract.channel.enums.PayState;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.PayEvent;
+import com.wallet.common.enums.PayState;
 import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.contract.channel.state.StateMachine;
 
@@ -39,7 +39,7 @@ public final class PayStateMachine implements StateMachine<PayState, PayEvent> {
     @Override
     public PayState transition(PayState source, PayEvent event) {
         if (!canTransition(source, event)) {
-            throw new ChannelException(PayError.ILLEGAL_CHANGE_STATUS, source + " -> " + event);
+            throw new ChannelException(ErrorCode.ILLEGAL_CHANGE_STATUS, source + " -> " + event);
         }
         return TABLE.get(source).get(event);
     }

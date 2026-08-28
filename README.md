@@ -1,8 +1,11 @@
 # wallet 钱包工程
 
-多模块 Spring Boot 钱包：**用户资产**（余额 / 积分 / 优惠券 / 支付密码）+ **三方支付内核** + **拆分支付编排**。
-由 pay-channel-sdk 扩展而来——原来只是一个纯 Java 的三方支付编排 SDK，现在补全为完整的钱包系统，
-并贯彻一个核心设计：**同一支付单的所有状态变更共用同一把分布式锁**。
+多模块 Spring Boot 钱包：**用户账户**（余额 / 积分 / 优惠券 / 支付密码）+ **三方支付内核** + **拆分支付编排**。
+由 pay-channel-sdk 扩展而来，两条主线设计贯穿全局：
+
+1. **同一支付单的所有状态变更共用同一把分布式锁**；
+2. **契约驱动的模块化**——跨模块调用只依赖 `wallet-contract` 的 `*Service` 接口与 DTO，
+   实现（`*ServiceImpl`）在各自模块，持久化实体绝不跨模块（模块边界处做 entity→DTO 转换）。
 
 - [技术栈](#技术栈)
 - [工程结构](#工程结构)
@@ -21,11 +24,12 @@
 |---|---|---|
 | 语言/构建 | Java 21 LTS · Maven 3.9+ | 编译 release 21 |
 | 框架 | Spring Boot 3.5.x · Spring Cloud 2025.0.x | Cloud 仅预置 BOM，组件按需引入 |
-| ORM | MyBatis-Plus 3.5.x | 库模块只依赖 `mybatis-plus-core`，starter 与分页插件在 wallet-app；**Mapper 全部 default + LambdaWrapper，零手写 SQL** |
+| ORM | MyBatis-Plus 3.5.x | 库模块只依赖 `mybatis-plus-core`，starter 与分页插件在 wallet-app；**Mapper 全部 default + LambdaWrapper，零手写 SQL**；实体继承 `BaseEntity`（审计字段自动填充 + `@TableLogic` 逻辑删除） |
 | Redis | `spring-boot-starter-data-redis`（排除 Lettuce）+ Redisson 4.7 | `RedissonConnectionFactory` 桥接 Spring Data Redis；Redisson codec 用 `JsonJacksonCodec`，`RedisTemplate` 值用 Jackson JSON |
-| 分布式锁 | lock4j 2.2.7 | `@Lock4j` 声明式，底层 Redisson 可重入锁 |
+| 分布式锁 | lock4j 2.2.7 | `@Lock4j` 声明式，底层 Redisson 可重入锁；注解在 common（lock4j-core），装配在 app（starter） |
 | 定时任务 | XXL-Job 3.4.2 | 执行器内嵌 wallet-app，需另行部署 xxl-job-admin |
 | 数据库 | MySQL 8.0+ | 金额一律 BIGINT 分；状态存枚举 name() |
+| 时区 | **系统时间统一 UTC** | JVM 默认时区 / Jackson / JDBC `serverTimezone` 全部 UTC，入库时间为 0 时区，客户端按自己时区转换展示 |
 | 接口文档 | springdoc-openapi 2.8（Swagger 3 / OpenAPI 3） | `/swagger-ui.html` |
 | 参数校验 | spring-boot-starter-validation | `@Valid` + 全局异常映射 |
 | 限流 | Redisson 分布式固定窗口 | 四维：GLOBAL 应用兜底/API 接口/IP/USER；配置全局默认 + `@RateLimit` 注解接口覆盖，超限 429 |
@@ -36,74 +40,115 @@
 
 ## 工程结构
 
+六个模块，三层分工：**common 装类型（基建/枚举/实体基类）· contract 装契约（接口/DTO/扩展点）·
+各领域模块装实现（serviceImpl 按功能分文件夹）**，app 是组合根。
+
 ```
 wallet（父 pom：版本管理、模块聚合）
 │
-├── wallet-common    通用件（无业务）：ApiResult 统一返回体 / BizException+ErrorCode /
-│                    IdMaker 单号生成 / MoneyUtil / TraceIds 链路追踪工具
+├── wallet-common    纯基建层（所有模块依赖）
+│   ├── result/       ApiResult 统一返回体（含 traceId）
+│   ├── error/        ErrorCode 全量错误码枚举（通用/账户/支付/渠道，code 全局唯一）+ CommonException
+│   ├── entity/       BaseEntity 实体基类：createTime/updateTime（UTC 自动填充）、
+│   │                 deleted（@TableLogic 逻辑删除）、createBy/updateBy
+│   ├── enums/        全部业务枚举（12 个）：PayType/CouponType/OrderState/PartState/RefundOrderState/
+│   │                 PayState/RefundState/ActionType + 状态机事件（OrderEvent/PartEvent/PayEvent/RefundEvent）
+│   ├── rule/         通用规则引擎骨架：Rule<F,R> + RulePipeline
+│   ├── trace/        TraceIds 链路追踪工具
+│   └── util/         IdMaker 单号生成 / MoneyUtil 金额工具
 │
-├── wallet-contract  跨模块通信契约（依赖 common）：能力接口 *Service + 数据模型 + 扩展点，无业务实现。
-│   ├── account/      MoneyService/PointService/CouponService/AccountService/PasswordService +
-│   │                 CouponView/AccountSummary/CouponType
-│   ├── channel/      ChannelService（内核操作）/ ChannelConfigService（配置扩展点）+
-│   │                 model(14)/spi(5)/枚举/ChannelException/StateMachine
-│   └── pay/          PayService/RefundService（编排）+ CreateOrderCmd/PartItem/结果/详情视图等 DTO
+├── wallet-contract  跨模块服务契约（依赖 common）：*Service 接口 + 跨模块 DTO + 扩展点，无业务实现
+│   ├── account/      MoneyService/PointService/CouponService/AccountService/PasswordService
+│   │   └── model/    CouponView / AccountSummary
+│   ├── channel/      ChannelService（内核操作）/ ChannelConfigService（配置扩展点）
+│   │   ├── action/   渠道动作扩展点：Channel 根接口 + Pay/Query/Refund/Cancel/Callback/Confirm
+│   │   ├── spi/      宿主扩展点：TradeStore/RefundStore/PayListener/CallLogWriter/FeeRule
+│   │   ├── model/    PayRequest/PayResult/CallbackRequest… 15 个
+│   │   ├── state/    StateMachine 转换表状态机契约
+│   │   └── error/    ChannelException（复用 common 的 ErrorCode）
+│   └── pay/          PayService/RefundService/OrderFinisher/AssetPartService
+│       └── model/    CreateOrderCmd/PartItem/结果/详情视图（PayOrderView 等）/
+│                     RefundAllocation/RefundEntry… 13 个
 │
-├── wallet-channel   所有三方交互的归属地（依赖 contract、common）：支付内核 + 渠道实现
-│   ├── core/         ChannelTable 渠道×动作注册表 / PayFlow 支付编排
-│   ├── ChannelServiceImpl  内核组装门面（实现契约 ChannelService，由 app 装配）
-│   ├── action/       Channel 根接口 + Pay/Query/Refund/Cancel/Callback/Confirm 动作接口（渠道扩展点）
-│   ├── state/        支付/退款状态机（StateMachine 契约在 contract）
-│   ├── mock/         MockChannel 模拟渠道 + MockStore/MockPayload/MockProperties
-│   └── antom/        Antom（支付宝国际）真实渠道 + AntomConfig/AntomPayload
+├── wallet-channel   所有三方交互的归属地（依赖 contract）：支付内核 + 渠道动作实现
+│   ├── core/         ChannelTable 渠道×动作二维注册表 / PayFlow 支付编排
+│   ├── state/        PayStateMachine / RefundStateMachine
+│   └── serviceImpl/  实现类（渠道动作按功能点聚合，Antom/Mock 同名动作放一起）
+│       ├── support/   ChannelServiceImpl 内核组装门面（实现契约 ChannelService，app 装配）+
+│       │              AntomClient 共享 SDK client / Abstract*Action / AntomConfig / AntomPayload /
+│       │              MockStore / MockPayload / MockProperties
+│       ├── pay/       AntomPayAction / MockPayAction
+│       ├── query/     AntomQueryAction / MockQueryAction
+│       ├── refund/    AntomRefundAction / MockRefundAction
+│       ├── cancel/    AntomCancelAction / MockCancelAction
+│       └── callback/  AntomCallbackAction / MockCallbackAction
 │
-├── wallet-account   用户账户（依赖 contract、common）：余额 / 积分 / 券 / 支付密码
-│   ├── service/       MoneyServiceImpl 余额 / PointServiceImpl 积分 / CouponServiceImpl 券 /
-│   │                  AccountServiceImpl 总览（实现 contract 的 *Service 接口）
-│   ├── service/password/  PasswordServiceImpl 支付密码：BCrypt + 错误锁定 + 一次性授权票据
-│   └── mapper/ entity/    全部 CAS 条件更新 + 按业务号幂等流水
+├── wallet-account   用户账户（依赖 contract）：余额 / 积分 / 券 / 支付密码
+│   ├── entity/       Account/MoneyLog/PointLog/Coupon/UserCoupon/PayPassword（继承 BaseEntity）
+│   ├── mapper/       全部 CAS 条件更新 + 按业务号幂等流水
+│   └── serviceImpl/  实现 contract.account 的 *Service 接口，按功能分文件夹
+│       ├── money/       MoneyServiceImpl
+│       ├── point/       PointServiceImpl
+│       ├── coupon/      CouponServiceImpl + CouponRuleEngine/CouponFact + rule/ 券规则
+│       ├── password/    PasswordServiceImpl + PasswordStore（BCrypt + 错误锁定 + 一次性票据）
+│       └── account/     AccountServiceImpl 资产总览
 │
-├── wallet-pay       支付编排（依赖 contract、common；不依赖 account/channel）
-│   ├── service/       PayServiceImpl 支付编排 / RefundServiceImpl 退款 / AssetPartService 资产事务 /
-│   │                  OrderFinisher 结单器 / RefundSplitter 退款分摊（纯函数）
-│   ├── adapter/       contract.channel.spi 的落库适配（TradeStore/RefundStore/PayListener/CallLogWriter）
-│   ├── service/ChannelConfigServiceImpl  ChannelConfigService 契约实现（channel_config 表）
-│   ├── event/         领域事件：OrderPaidEvent/OrderClosedEvent/RefundSuccessEvent + 审计订阅示例
-│   ├── state/         OrderState/PartState/RefundOrderState 枚举 + 转换表状态机
-│   ├── job/           CloseExpiredOrderJob 超时关单（XXL-Job）
-│   └── mock/          MockNotifyService 自动回调（仅联调，宿主侧）
+├── wallet-pay       支付编排（依赖 contract；不依赖 account/channel 实现模块）
+│   ├── entity/       PayOrder/PayPart/RefundOrder/RefundPart/ChannelLog/ChannelConfig（继承 BaseEntity）
+│   ├── mapper/       CAS 状态推进 + 幂等
+│   ├── serviceImpl/  实现 contract.pay 的接口，按功能分文件夹
+│   │   ├── pay/          PayServiceImpl 支付编排
+│   │   ├── refund/       RefundServiceImpl 退款 + RefundSplitter 分摊（纯函数）
+│   │   ├── asset/        AssetPartServiceImpl 资产事务（扣减/回滚/退款）
+│   │   ├── finisher/     OrderFinisherImpl 结单器
+│   │   └── channelConfig/ ChannelConfigServiceImpl（channel_config 表 + 30s 缓存）
+│   ├── adapter/      contract.channel.spi 的落库适配（TradeStore/RefundStore/PayListener/CallLogWriter）
+│   ├── validate/     PayValidatorChain 责任链校验 + 6 个校验器
+│   ├── state/        OrderStateMachine / PartStateMachine（转换表）
+│   ├── event/        领域事件：OrderPaidEvent/OrderClosedEvent/RefundSuccessEvent + 审计订阅示例
+│   ├── job/          CloseExpiredOrderJob 超时关单（XXL-Job）
+│   └── mock/         MockNotifyService 自动回调（仅联调，宿主侧）
 │
 └── wallet-app       启动模块/组合根（依赖 pay、account、channel、contract）
-    ├── controller/    REST 接口（入参 *Req + @Valid，跨模块调用经 contract 接口）
+    ├── controller/    REST 接口（入参 *Req + @Valid，跨模块调用只 import contract）
     ├── handler/       GlobalExceptionHandler 全局异常 → 统一返回体
     ├── filter/        TraceIdFilter 链路追踪
-    ├── config/        RedisConfig / MybatisPlusConfig / JacksonConfig / WebConfig（跨域+限流）/
-    │                  XxlJobConfig / ChannelConfig（ChannelKit 装配：渠道 + spi 落库适配）
+    ├── limit/         @RateLimit 四维限流
+    ├── config/        AuditMetaObjectHandler（审计字段 UTC 自动填充）/ RedisConfig / MybatisPlusConfig /
+    │                  JacksonConfig / WebConfig（跨域+限流）/ XxlJobConfig /
+    │                  ChannelConfig（ChannelServiceImpl 装配：收集渠道动作 Bean + spi 落库适配）
     └── resources/     application.yml + config/*.yml + logback-spring.xml
 ```
 
-依赖方向：`app → (pay, account, channel, contract)`；`pay → (contract, common)`；
-`account → (contract, common)`；`channel → (contract, common)`；`contract → common`。
-**跨模块调用只依赖 `wallet-contract` 的接口与数据模型**，实现模块的 Bean 由 app（组合根）装配齐全；
-渠道实现的持久化/事件/日志经 `contract.channel.spi` 由 pay（宿主）提供，渠道配置经
-`contract.channel.ChannelConfigService` 由 pay 读 channel_config 表供给。
-SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `2026-08-24-钱包建表.sql`）。
+依赖方向（编译期，全部单向无环）：
 
-依赖组织：
+```
+app → (pay, account, channel, contract)      组合根：装配全部实现 Bean
+pay / account / channel → contract → common  库模块只声明 contract，common 经传递获得
+```
+
+- **跨模块调用只依赖 contract 的接口与 DTO**：pay 调账户能力经 `contract.account.*Service`，
+  调渠道内核经 `contract.channel.ChannelService`；app 控制器只 import contract。
+- **实体不跨模块**：entity 与 mapper/事务在各自模块内聚；数据跨模块边界一律走 DTO 视图
+  （如 `PayOrderView`/`PayPartView`，state 用 String 承接，边界处 entity→DTO 转换）。
+- 渠道实现的持久化/事件/日志经 `contract.channel.spi` 由 pay（宿主）提供；
+  渠道配置经 `contract.channel.ChannelConfigService` 由 pay 读 channel_config 表供给。
+- SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`。
+
+依赖组织（pom 层面）：
 
 - 版本统一在父 pom `dependencyManagement`（Boot BOM + Spring Cloud BOM + 自管三方件）。
 - **横切依赖按"库提供类型、应用决定装配"分工**：
-  - `wallet-common` 统一提供横切基建**类型/注解**（可能多模块用，库模块经 common 传递获得，免重复声明）：
+  - `wallet-common` 统一提供横切基建**类型/注解**（可能多模块用，库模块经传递获得，免重复声明）：
     `mybatis-plus-core` / `spring-context` / `spring-tx` / `spring-boot` / `jackson-databind` /
     `lock4j-core`（`@Lock4j`）/ `redisson`（分布式原语）/ `spring-boot-autoconfigure`（条件注解）/
     `spring-security-crypto`（BCrypt）/ `xxl-job-core`（`@XxlJob`）。
   - **boot starter（自动装配）一律只在 `wallet-app`**：`lock4j-redisson-spring-boot-starter`、
     `mybatis-plus-spring-boot3-starter`、`spring-boot-starter-*` 等。库模块引 starter 会把自动装配
-    和 mybatis-spring/HikariCP/autoconfigure 一整串传递依赖塞给所有复用方，并可能触发意外装配。
-  - **垂直三方业务 SDK 留在所属模块**：如 channel 的 Antom（支付宝国际）SDK——只服务于支付渠道这个具体集成。
+    和一整串传递依赖塞给所有复用方，并可能触发意外装配。
+  - **垂直三方业务 SDK 留在所属模块**：如 channel 的 Antom（支付宝国际）SDK。
 - **lombok（provided）与 junit-jupiter（test）统一声明在父 pom 的 `<dependencies>`**：
-  这两个作用域不具传递性、无法放进 common 让下游继承，而全模块都要用——
-  直接由父 pom 声明、所有子模块继承，各模块不再各自重复声明。
+  这两个作用域不具传递性、无法放进 common 让下游继承，而全模块都要用——由父 pom 声明、子模块继承。
 
 ## 快速开始（如何跑起来）
 
@@ -119,9 +164,12 @@ SQL 脚本统一放根目录 `sql/`，命名 `日期-中文说明.sql`（如 `20
 
 ```bash
 mysql -uroot -e "CREATE DATABASE IF NOT EXISTS wallet DEFAULT CHARSET utf8mb4"
-mysql -uroot wallet < sql/2026-08-24-钱包建表.sql
-mysql -uroot wallet < sql/2026-08-24-优惠券种子数据.sql   # 可选：两张联调用券模板
+mysql -uroot wallet < sql/2026-08-24-钱包建表.sql            # 含 BaseEntity 审计列（update_time/deleted/create_by/update_by）
+mysql -uroot wallet < sql/2026-08-24-优惠券种子数据.sql      # 可选：两张联调用券模板
 ```
+
+> 时间统一 UTC：应用侧已全部 UTC（JVM/Jackson/JDBC）；建议 MySQL 服务器时区也配置为
+> UTC（my.cnf `default-time-zone='+00:00'`），让 DB 侧 `DEFAULT CURRENT_TIMESTAMP` 兜底值同样是 UTC。
 
 ### 3. 启动
 
@@ -175,7 +223,7 @@ curl -s -H "$UID" -H "$CT" -d '{"orderNo":"P?????","amount":1000,"reason":"测�
 ```
 
 所有响应都是统一返回体：`{code, message, data, traceId, timestamp, success}`；
-拿着 `traceId` 可以在日志里串出这次请求的完整链路。
+拿着 `traceId` 可以在日志里串出这次请求的完整链路。返回的时间均为 UTC，客户端按自己时区转换展示。
 
 ### 5. 常用命令
 
@@ -194,9 +242,9 @@ resources/
 ├── application.yml      # 主入口：应用名、端口、import 清单
 ├── logback-spring.xml   # 日志：pattern 内嵌 traceId、按天/100MB 滚动留 30 天、ERROR 单独文件、异步输出
 └── config/
-    ├── infra.yml        # 基础能力：数据源/Redis/MyBatis-Plus/lock4j/XXL-Job/Web 时间格式/springdoc
+    ├── infra.yml        # 基础能力：数据源(serverTimezone=UTC)/Redis/MyBatis-Plus/lock4j/XXL-Job/Web 时间格式/springdoc
     ├── biz.yml          # 业务参数：wallet.pay（超时/积分汇率）、wallet.password、wallet.antom
-    ├── mock.yml         # Mock 渠道（仅联调）：wallet.mock.enabled=false 时 MockChannel 不注册
+    ├── mock.yml         # Mock 渠道（仅联调）：wallet.mock.enabled=false 时 Mock*Action 全部不注册
     └── monitor.yml      # 监控端点暴露 + 日志级别
 ```
 
@@ -206,6 +254,17 @@ CORS 白名单收紧（`WebConfig`）；actuator 已默认走独立管理端口 
 监控端点仅内网可达；数据源/Redis 地址与凭据用 prod profile 覆盖；接入真实用户体系替换 `X-Uid` 头。
 
 ## 核心设计
+
+### 契约架构与数据边界
+
+- **接口 = 契约**：所有 service 能力接口按 `*Service` 命名放 `wallet-contract`，实现按 `*ServiceImpl`
+  命名放各模块 `serviceImpl/`（按功能分文件夹）。调用方注入接口，Spring 装配实现（app 组合根拉全 Bean）。
+- **数据边界**：持久化实体只在本模块流转；跨模块传输一律用 contract 的 DTO
+  （详情视图 `PayOrderView`/`PayPartView` 等，state 用 String 承接枚举），模块边界处显式转换。
+  这保证任何模块改表结构不影响其他模块。
+- **BaseEntity 审计**（common.entity）：所有实体继承——`createTime`/`updateTime` 由
+  `AuditMetaObjectHandler` 以 **UTC** 自动填充（`@TableField(fill)`，业务代码禁止手动 set）；
+  `deleted` 逻辑删除（`@TableLogic`：查询自动过滤已删、delete 语句自动改 update）；`createBy`/`updateBy` 预留。
 
 ### 业务全景（拆分支付流程图）
 
@@ -217,10 +276,10 @@ flowchart TD
     D -->|是| E[校验并消费支付密码票据]
     D -->|否| F
     E --> F[主单 CAS: INIT→PAYING]
-    F --> G[一个事务内扣资产段<br/>券→积分→余额  AssetPartService]
+    F --> G[一个事务内扣资产段<br/>券→积分→余额  AssetPartServiceImpl]
     G -->|任一失败| H[整体回滚 + 主单 FAIL]
     G -->|成功| I{有三方段?}
-    I -->|否| J[OrderFinisher 结单<br/>主单 SUCCESS + OrderPaidEvent]
+    I -->|否| J[OrderFinisherImpl 结单<br/>主单 SUCCESS + OrderPaidEvent]
     I -->|是| K[发起渠道支付  事务外]
     K -->|下单失败| L[补偿回滚资产段 + 主单 FAIL]
     K -->|下单成功| M[主单停在 PAYING<br/>等回调/主动查询]
@@ -234,11 +293,11 @@ flowchart TD
 - `pay_order` 主单记录总额与状态；`pay_part` 分段记录每段金额与来源（PayType：COUPON/POINT/MONEY/CHANNEL）。
 - 校验 `sum(段金额) == 总金额` 通过后才能创建；一个支付单至多一个三方分段。
 - 资产段（券/积分/余额）在**同一个本地事务**内按 券→积分→余额 顺序 CAS 扣减，任一段失败整体回滚
-  （事务边界在独立 Bean `AssetPartService`，经代理调用保证 @Transactional 生效）；
-  三方段异步等回调确认，期间主单停在 PAYING。
+  （事务边界在独立 Bean `AssetPartServiceImpl`，经代理调用保证 @Transactional 生效；
+  接口 `AssetPartService` 在 contract，签名全 DTO）；三方段异步等回调确认，期间主单停在 PAYING。
 - 纯资产支付（无三方段）当场完成；渠道下单失败时已扣资产段自动补偿回滚。
-- 结单（全部分段成功 → 主单 SUCCESS + 发布 OrderPaidEvent）唯一入口是 `OrderFinisher`，
-  纯资产完成、渠道回调、补单三条路径共用，事件至多发布一次（以 CAS 影响行数为准）。
+- 结单（全部分段成功 → 主单 SUCCESS + 发布 OrderPaidEvent）唯一入口是 `OrderFinisher` 契约
+  （实现 `OrderFinisherImpl`），纯资产完成、渠道回调、补单三条路径共用，事件至多发布一次（以 CAS 影响行数为准）。
 
 ### 支付时序（余额 + 三方渠道混合支付）
 
@@ -247,11 +306,11 @@ sequenceDiagram
     autonumber
     participant U as 前端
     participant PC as PayController
-    participant PS as PayService<br/>(@Lock4j 单锁)
-    participant AS as AssetPartService<br/>(@Transactional)
-    participant K as ChannelKit/PayFlow<br/>(wallet-channel 内核)
-    participant CH as 渠道<br/>(MOCK/Antom)
-    participant OF as OrderFinisher
+    participant PS as PayServiceImpl<br/>(@Lock4j 单锁)
+    participant AS as AssetPartServiceImpl<br/>(@Transactional)
+    participant K as ChannelServiceImpl/PayFlow<br/>(wallet-channel 内核)
+    participant CH as 渠道动作<br/>(Mock*/Antom*Action)
+    participant OF as OrderFinisherImpl
 
     U->>PC: POST /api/pay/submit {orderNo, ticket}
     PC->>PS: submit(userId, orderNo, ticket)
@@ -259,8 +318,8 @@ sequenceDiagram
     PS->>PS: 消费密码票据 + 主单 CAS INIT→PAYING
     PS->>AS: deductAssetParts(券→积分→余额)
     Note over AS: 一个本地事务，失败整体回滚
-    PS->>K: flow().pay(request)
-    K->>CH: 渠道下单
+    PS->>K: channelService.pay(request)
+    K->>CH: (channel, PAY) 二维分发 → 渠道下单
     CH-->>K: 支付参数 payload
     K-->>PS: PayResult
     PS-->>U: PAYING + channelPayload（前端拉起支付）
@@ -268,7 +327,7 @@ sequenceDiagram
     CH->>PC: POST /api/pay/callback/{channel}/{orderNo}/{partNo}
     PC->>PS: handleCallback(...)
     Note over PS: 同一把单锁，与提交/关单互斥
-    PS->>K: flow().callback(request)
+    PS->>K: channelService.callback(request)
     K->>CH: 验签（+必要时主动查证）
     K->>K: 分段 CAS PAYING→SUCCESS
     K->>OF: PayListener.onPaySuccess → finishIfAllSuccess
@@ -282,17 +341,17 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant U as 前端
-    participant RS as RefundService<br/>(@Lock4j 同一把单锁)
+    participant RS as RefundServiceImpl<br/>(@Lock4j 同一把单锁)
     participant SP as RefundSplitter<br/>(纯函数)
-    participant K as ChannelKit/PayFlow
-    participant AS as AssetPartService<br/>(@Transactional)
+    participant K as ChannelServiceImpl/PayFlow
+    participant AS as AssetPartServiceImpl<br/>(@Transactional)
 
     U->>RS: POST /api/refund/create {orderNo, amount}
     Note over RS: 校验已支付、可退充足
     RS->>SP: split(parts, amount)
-    SP-->>RS: 分摊明细（CHANNEL→MONEY→POINT 逆序，券不折现）
+    SP-->>RS: RefundAllocation 分摊明细（CHANNEL→MONEY→POINT 逆序，券不折现）
     RS->>RS: 落退款单 INIT + 退款分段 INIT
-    RS->>K: 先退三方 flow().refund()
+    RS->>K: 先退三方 channelService.refund()
     alt 三方退款失败
         K-->>RS: false → 退款单 FAIL（资产分毫未动）
     else 三方成功/无三方段
@@ -343,8 +402,9 @@ stateDiagram-v2
 
 - 退款单 `RefundOrderState`：`INIT --> REFUNDING（预留） --> SUCCESS / FAIL`
 
-实体状态与分段类型全部用枚举（DB 存 name()，服务层无字符串比较）；
-可否关单等转换判定走 `OrderStateMachine`/`PartStateMachine.canTransition`，不写 if-else 链。
+状态与事件枚举全部在 `common.enums`（DB 存 name()，服务层无字符串比较）；
+`StateMachine` 契约在 contract，转换表实现在各域：支付/退款内核状态机在 channel/state，
+订单/分段状态机在 pay/state；可否关单等转换判定走 `canTransition`，不写 if-else 链。
 
 ### 数据模型（ER 图）
 
@@ -451,8 +511,10 @@ erDiagram
     pay_part ||--o{ channel_log : "out_trade_no 渠道调用日志"
 ```
 
-逻辑外键（无物理外键约束）：单号字符串关联，唯一索引保证幂等
-（`pay_order.order_no`、`pay_part.part_no`、`money_log/point_log (biz_no,type)` 等）。
+- 图中省略了各表共有的审计列（BaseEntity）：`create_time`/`update_time`（UTC，应用自动填充）、
+  `deleted`（逻辑删除）、`create_by`/`update_by`——已含在建表 SQL 中。
+- 逻辑外键（无物理外键约束）：单号字符串关联，唯一索引保证幂等
+  （`pay_order.order_no`、`pay_part.part_no`、`money_log/point_log (biz_no,type)` 等）。
 
 ### 并发与幂等（CAS + 幂等流水）
 - 扣余额：`UPDATE wallet_account SET money = money - x WHERE user_id=? AND money >= x`（影响行数=1 才算成功）
@@ -517,14 +579,15 @@ BCrypt 慢哈希（强度 12）+ 连续错 5 次 / 当日 10 次锁 10 分钟 +
 | POST `/api/pay/create` | 创建拆分支付单 `{bizOrderNo, totalAmount, currency, parts[]}`（可带 `X-App-Id` 标识来源商城；同 app 同 bizOrderNo 幂等） |
 | POST `/api/pay/submit` | 提交支付 `{orderNo, ticket?}`（含资产段必须带票据） |
 | POST `/api/pay/callback/{channel}/{orderNo}/{partNo}` | 渠道异步回调（验签在渠道实现内） |
-| GET `/api/pay/order/{orderNo}` | 查主单+分段 |
+| GET `/api/pay/order/{orderNo}` | 查主单+分段（`OrderDetail` 视图） |
 | POST `/api/pay/query/{orderNo}` | 主动向渠道查证 |
 | POST `/api/pay/cancel/{orderNo}` | 取消支付（未付关单退资产；已付补单完成） |
 | POST `/api/refund/create` | 发起退款 `{orderNo, amount, reason?}` |
-| GET `/api/refund/{refundNo}` | 查退款单+分段 |
+| GET `/api/refund/{refundNo}` | 查退款单+分段（`RefundDetail` 视图） |
 
 统一返回体：`{code, message, data, traceId, timestamp, success}`（`code="0"` 即成功）。
-错误码见各模块 `error/` 包；参数校验失败统一 `BAD_PARAM`，锁冲突统一 `LOCK_FAILED`。
+错误码统一在 `com.wallet.common.error.ErrorCode`（全量枚举：通用/账户/支付/渠道，code 全局唯一）；
+参数校验失败统一 `BAD_PARAM`，锁冲突统一 `LOCK_FAILED`。
 
 HTTP 状态码约定（影响调用方重试语义，尤其渠道回调）：
 **业务失败 200**（code 区分，重试无意义）· **参数/报文错 400** · **锁冲突 429** · **系统异常 500**
@@ -532,22 +595,32 @@ HTTP 状态码约定（影响调用方重试语义，尤其渠道回调）：
 
 ## 开发约定
 
+- **契约命名**：跨模块能力接口按 `*Service` 命名放 `wallet-contract`（跨模块 DTO 放对应域 `model/`）；
+  实现类按 `*ServiceImpl` 命名放本模块 `serviceImpl/` 并按功能分文件夹。
+  新增跨模块能力 = contract 定义接口 + 实现模块写 Impl，调用方只 import contract。
+- **数据边界**：实体不出模块；跨模块数据一律 DTO（视图 record，state 用 String），边界处显式转换。
+- **实体**：全部继承 `BaseEntity`（common.entity）；业务代码**禁止手动 set** createTime/updateTime
+  （`AuditMetaObjectHandler` UTC 自动填充）；逻辑删除走 `@TableLogic`（deleted 列）。
+  实体自有字段手写 getter/setter，跨模块 model 用 record。
+- **时间**：**系统时间统一 UTC**——JVM 默认时区（WalletApp 启动设置）、Jackson、JDBC `serverTimezone`
+  全部 UTC；客户端按自己时区转换展示；新代码 `LocalDateTime.now()` 天然产出 UTC，不要再指定时区。
+- **错误码**：统一加在 `common.error.ErrorCode`（全量枚举），业务异常抛 `CommonException(error, detail)`，
+  渠道内核抛 `ChannelException(error, detail)`；不再按模块建错误枚举。
 - **日志**：统一 SLF4J（`@Slf4j`）；error 日志必须带异常堆栈（异常对象作最后一个参数）。
-- **Lombok 使用范围**：`@Slf4j` + `@AllArgsConstructor`（Bean 依赖注入，构造器不手写）；
-  构造器里有初始化逻辑（如 PasswordService）或参数带 @Value（如 WebConfig）时保留手写；
-  entity 仍手写 getter/setter，model 用 record。
-- **Swagger（OpenAPI 3）**：控制器标 `@Tag`/`@Operation`/`@Parameter`，出入参与暴露实体标 `@Schema`；
+- **Lombok 使用范围**：`@Slf4j` + `@AllArgsConstructor`（Bean 依赖注入，构造器不手写）+
+  `@Getter/@Setter`（BaseEntity、异常类）；构造器里有初始化逻辑或参数带 @Value 时保留手写。
+- **Swagger（OpenAPI 3）**：控制器标 `@Tag`/`@Operation`/`@Parameter`，出入参与暴露 DTO 标 `@Schema`；
   文档信息在 `OpenApiConfig`，在线文档 `/swagger-ui.html`。
 - **数据访问**：Mapper 全部 default 方法 + `LambdaQueryWrapper`/`LambdaUpdateWrapper`，不写注解/XML SQL；
   分页用 `PaginationInnerInterceptor`（已装配）。
 - **序列化**：Jackson 全局配置（`JacksonConfig`）——`LocalDateTime ⇄ yyyy-MM-dd HH:mm:ss`、
-  `LocalDate ⇄ yyyy-MM-dd`、`LocalTime ⇄ HH:mm:ss`、Date 东八区；枚举入参大小写不敏感；
+  `LocalDate ⇄ yyyy-MM-dd`、`LocalTime ⇄ HH:mm:ss`、时区 UTC；枚举入参大小写不敏感；
   查询串/表单参数格式在 `spring.mvc.format`，与 JSON 一致。
 - **入参**：HTTP 入参 DTO 放 wallet-app、后缀 `*Req`、加 jakarta 校验注解，`toCmd()` 转服务层命令对象；
-  服务层入参后缀 `*Cmd`。
+  服务层入参后缀 `*Cmd`（在 contract 的 model）。
 - **事务与锁**：`@Transactional`/`@Lock4j` 方法放独立 Bean 经代理调用，严禁类内 `this.` 自调用。
 - **命名**：`@ConfigurationProperties` 类后缀 `*Properties`；XXL-Job 任务类放 `job/` 后缀 `*Job`；
-  mock 相关放 `mock/`；entity 手写 getter/setter，model 用 record；金额一律 long（分）。
+  金额一律 long（分）。
 - **限流**：全局默认在 `wallet.rate-limit.*`（GLOBAL 应用兜底/IP/USER），
   接口按维度收紧用 `@RateLimit(dim = ..., permits = ...)` 可重复注解（API 维度只能注解配）；
   敏感接口示例见 `PasswordController.verify`（防爆破）与 `PayController.submit`。
@@ -577,10 +650,14 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test
 
 ## 接入真实支付渠道
 
-在 `wallet-pay` 新建包实现 `com.wallet.channel.action.*` 动作接口
-（`PayAction` 必选，`QueryAction`/`RefundAction`/`CancelAction`/`CallbackAction`/`ConfirmAction` 按渠道能力选），
-Spring 会自动收集所有 `Channel` Bean 注册进 `ChannelKit`（见 `ChannelConfig`）。
-参考 `antom/` 目录的 Antom（支付宝国际）渠道示范：商户配置在 `channel_config` 表
-（建表 SQL 已含 channel_config 表与 Antom 模板行），填好 config_json 密钥、enabled 置 1 即启用，
-改库 30 秒内生效无需重启；测试/生产环境切换改 config_json 里的 gateway（沙箱地址）即可。
-内核在构建期校验渠道动作完整性，配置错误启动即失败。
+渠道实现放 **`wallet-channel` 的 `serviceImpl/`**，按动作一类（参考 Antom 渠道示范）：
+
+1. 在 `serviceImpl/support/` 建渠道支撑类：`<渠道>Client`（配置加载 + SDK client 缓存，注入契约
+   `ChannelConfigService` 读 channel_config 表）+ `Abstract<渠道>Action`（渠道编码基类）。
+2. 在 `serviceImpl/pay|query|refund|cancel|callback/` 下按动作各建一个 `@Component` 类，
+   实现 `contract.channel.action` 的对应接口（`PayAction` 必选，其余按渠道能力选）。
+3. Spring 自动收集所有 `Channel` Bean，`ChannelConfig`（app）装配进 `ChannelServiceImpl`，
+   `ChannelTable` 按 **渠道×动作** 二维注册（构建期校验完整性：缺 PAY/重复注册启动即失败），
+   `PayFlow` 按 `(channelCode, ActionType)` 分发。
+4. 商户配置进 `channel_config` 表（建表 SQL 已含 Antom 模板行）：填 config_json 密钥、enabled 置 1
+   即启用，改库 30 秒内生效无需重启；测试/生产切换改 config_json 里的 gateway（沙箱地址）即可。

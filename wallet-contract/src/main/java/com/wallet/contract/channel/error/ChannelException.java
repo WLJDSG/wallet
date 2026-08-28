@@ -1,6 +1,6 @@
 package com.wallet.contract.channel.error;
 
-import com.wallet.contract.channel.enums.PayError;
+import com.wallet.common.error.ErrorCode;
 
 /**
  * 渠道内核统一业务异常。
@@ -10,26 +10,26 @@ import com.wallet.contract.channel.enums.PayError;
  */
 public class ChannelException extends RuntimeException {
 
-    private final PayError error;
+    private final ErrorCode error;
 
     /** 补充排查信息，可为 null */
     private final String detail;
 
-    public ChannelException(PayError error) {
+    public ChannelException(ErrorCode error) {
         this(error, null, null);
     }
 
-    public ChannelException(PayError error, String detail) {
+    public ChannelException(ErrorCode error, String detail) {
         this(error, detail, null);
     }
 
-    public ChannelException(PayError error, String detail, Throwable cause) {
+    public ChannelException(ErrorCode error, String detail, Throwable cause) {
         super(error.code() + (detail == null ? "" : ": " + detail), cause);
         this.error = error;
         this.detail = detail;
     }
 
-    public PayError error() {
+    public ErrorCode error() {
         return error;
     }
 

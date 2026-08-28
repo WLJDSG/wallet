@@ -1,10 +1,10 @@
 package com.wallet.pay.validate.validator;
 
 import com.wallet.contract.account.PasswordService;
-import com.wallet.common.error.BizException;
+import com.wallet.common.error.CommonException;
 import com.wallet.pay.entity.PayPart;
-import com.wallet.pay.error.OrderError;
-import com.wallet.pay.state.OrderState;
+import com.wallet.common.error.ErrorCode;
+import com.wallet.common.enums.OrderState;
 import com.wallet.pay.validate.PayScene;
 import com.wallet.pay.validate.PayValidationContext;
 import com.wallet.pay.validate.PayValidator;
@@ -35,7 +35,7 @@ public class SubmitTicketValidator implements PayValidator {
             return;
         }
         if (context.ticket() == null || context.ticket().trim().isEmpty()) {
-            throw new BizException(OrderError.TICKET_REQUIRED, context.orderNo());
+            throw new CommonException(ErrorCode.TICKET_REQUIRED, context.orderNo());
         }
         passwordService.consumeTicket(context.ticket(), context.userId(), context.orderNo(),
             context.order().getTotalAmount());

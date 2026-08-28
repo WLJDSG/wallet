@@ -1,6 +1,6 @@
 package com.wallet.contract.account.model;
 
-import com.wallet.contract.account.enums.CouponType;
+import com.wallet.common.enums.CouponType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
