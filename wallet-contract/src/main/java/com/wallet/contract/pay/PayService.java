@@ -16,7 +16,7 @@ public interface PayService {
     /** 创建拆分支付单：校验分段合法性与金额勾稽；同 appId 同 bizOrderNo 幂等返回既有单。 */
     CreateOrderResult create(String appId, Long userId, CreateOrderCmd cmd);
 
-    /** 提交支付：含资产段必须携带密码票据；扣资产段（事务）+ 发起三方（事务外）。 */
+    /** 提交支付：含余额段必须携带一次性支付授权票据；扣资产段（事务）+ 发起三方（事务外）。 */
     SubmitResult submit(Long userId, String orderNo, String ticket);
 
     /** 处理渠道异步回调（持单锁，内核不重复加锁），返回渠道要求的应答报文。 */

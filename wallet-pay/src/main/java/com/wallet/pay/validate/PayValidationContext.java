@@ -16,7 +16,7 @@ import java.util.List;
  * @param cmd          创建命令（CREATE）
  * @param order        支付主单（可为 null=不存在，由归属校验器判定）
  * @param parts        支付分段（SUBMIT）
- * @param ticket       支付密码票据（SUBMIT）
+ * @param ticket       密码、生物识别或二次确认签发的支付授权票据（SUBMIT）
  * @param refundAmount 申请退款金额（REFUND_CREATE）
  */
 public record PayValidationContext(PayScene scene, String appId, Long userId, String orderNo,

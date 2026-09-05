@@ -16,6 +16,10 @@
         退款分摊、超时关单任务；实现 wallet-channel 的 spi，并提供 mock 渠道与 Antom 渠道。</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-security</artifactId>
+        </dependency>
         <!-- 渠道操作契约 ChannelService / 渠道契约 model-spi-枚举：pay 不依赖 channel 实现模块 -->
         <dependency>
             <groupId>com.wallet</groupId>

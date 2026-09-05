@@ -5,6 +5,7 @@ import com.wallet.contract.channel.error.ChannelException;
 import com.wallet.common.error.CommonException;
 import com.wallet.common.error.ErrorCode;
 import com.wallet.common.result.ApiResult;
+import com.wallet.security.error.PaySecurityException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ChannelException.class)
     public ApiResult<Void> handleChannel(ChannelException e) {
         return ApiResult.fail(e.error().code(), e.getMessage());
+    }
+
+    /** 支付安全内核错误码直接作为稳定 wire code 返回，不泄露票据、密码或验证码。 */
+    @ExceptionHandler(PaySecurityException.class)
+    public ApiResult<Object> handlePaySecurity(PaySecurityException e) {
+        Object data = e.getData();
+        String message = e.getErrorCode().getZhCn();
+        return new ApiResult<>(e.getErrorCode().getCode(), message, data,
+            com.wallet.common.trace.TraceIds.current(), java.time.LocalDateTime.now());
     }
 
     /** @Valid 请求体校验失败 */

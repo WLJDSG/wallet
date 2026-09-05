@@ -47,7 +47,7 @@ public class PayController {
         return ApiResult.ok(payService.create(appId, userId, req.toCmd()));
     }
 
-    @Operation(summary = "提交支付", description = "含资产段必须携带密码票据；扣资产段（事务）+ 发起三方（事务外）")
+    @Operation(summary = "提交支付", description = "含余额段必须携带密码或生物识别签发的一次性授权票据；扣资产段（事务）+ 发起三方（事务外）")
     @RateLimit(dim = LimitDim.USER, permits = 5)  // 每用户每秒 5 次提交
     @PostMapping("/submit")
     public ApiResult<SubmitResult> submit(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId,

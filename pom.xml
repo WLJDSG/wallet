@@ -14,6 +14,7 @@
 
     <modules>
         <module>wallet-common</module>
+        <module>wallet-security</module>
         <module>wallet-channel</module>
         <module>wallet-contract</module>
         <module>wallet-account</module>
@@ -60,6 +61,11 @@
             <dependency>
                 <groupId>com.wallet</groupId>
                 <artifactId>wallet-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wallet</groupId>
+                <artifactId>wallet-security</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

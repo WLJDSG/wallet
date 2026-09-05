@@ -16,6 +16,10 @@
         扣减一律条件更新（CAS），流水按业务号幂等；支付密码 = BCrypt + 错误锁定 + 一次性票据。</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.wallet</groupId>
+            <artifactId>wallet-security</artifactId>
+        </dependency>
         <!-- 资产能力契约：实现 MoneyService/PointService/CouponService/AccountService/PasswordService -->
         <dependency>
             <groupId>com.wallet</groupId>

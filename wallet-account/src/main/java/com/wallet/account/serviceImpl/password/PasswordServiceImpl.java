@@ -9,7 +9,6 @@ import org.redisson.api.RBucket;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -18,7 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
- * 支付密码服务，实现 {@link PasswordService} 契约。
+ * 旧支付密码服务，仅保留用于兼容存量测试，不再注册为 Spring Bean。
  *
  * <p>三要素：</p>
  * <ul>
@@ -27,7 +26,7 @@ import java.util.UUID;
  *   <li><b>一次性授权票据</b>：校验通过签发票据（默认 TTL 300 秒），提交支付时原子消费并复核用户/订单/金额。</li>
  * </ul>
  */
-@Service
+@Deprecated
 public class PasswordServiceImpl implements PasswordService {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyyMMdd");

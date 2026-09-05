@@ -39,7 +39,7 @@ public enum ErrorCode {
     ORDER_STATE_INVALID("ORDER_STATE_INVALID", "支付单状态不允许该操作"),
     AMOUNT_NOT_MATCH("AMOUNT_NOT_MATCH", "分段金额之和与总额不一致"),
     PART_INVALID("PART_INVALID", "支付分段不合法"),
-    TICKET_REQUIRED("TICKET_REQUIRED", "含余额/积分/券的支付需要支付密码授权票据"),
+    TICKET_REQUIRED("TICKET_REQUIRED", "余额支付需要密码或生物识别签发的授权票据"),
     CHANNEL_PAY_FAILED("CHANNEL_PAY_FAILED", "渠道支付发起失败"),
     REFUND_TOO_MUCH("REFUND_TOO_MUCH", "退款金额超出可退金额"),
     COUPON_ONLY_FULL_REFUND("COUPON_ONLY_FULL_REFUND", "优惠券仅整单退款时返还"),

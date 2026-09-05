@@ -154,7 +154,7 @@ public class PayServiceImpl implements PayService {
     private SubmitResult doSubmit(Long userId, String orderNo, String ticket) {
         PayOrder order = payOrderMapper.findByOrderNo(orderNo);
         List<PayPart> parts = order == null ? List.of() : payPartMapper.findByOrderNo(orderNo);
-        // 责任链校验：归属 → 终态拦截 → 票据校验并消费（INIT 首次提交且含资产段时）
+        // 责任链校验：归属 → 终态拦截 → 票据校验并消费（INIT 首次提交且含余额段时）
         validatorChain.validate(PayValidationContext.forSubmit(userId, orderNo, order, parts, ticket));
 
         OrderState state = order.getState();

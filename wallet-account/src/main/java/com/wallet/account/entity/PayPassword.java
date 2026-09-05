@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 /**
  * 支付密码。password_hash 为 BCrypt 慢哈希，不存明文。
@@ -20,6 +21,9 @@ public class PayPassword extends BaseEntity {
     private String passwordHash;
     private String status;
     private Integer version;
+    private Integer securityVersion;
+    private Date passwordSetAt;
+    private Date passwordUpdatedAt;
 
     public Long getId() {
         return id;
@@ -59,5 +63,29 @@ public class PayPassword extends BaseEntity {
 
     public void setVersion(Integer version) {
         this.version = version;
+    }
+
+    public Integer getSecurityVersion() {
+        return securityVersion;
+    }
+
+    public void setSecurityVersion(Integer securityVersion) {
+        this.securityVersion = securityVersion;
+    }
+
+    public Date getPasswordSetAt() {
+        return passwordSetAt;
+    }
+
+    public void setPasswordSetAt(Date passwordSetAt) {
+        this.passwordSetAt = passwordSetAt;
+    }
+
+    public Date getPasswordUpdatedAt() {
+        return passwordUpdatedAt;
+    }
+
+    public void setPasswordUpdatedAt(Date passwordUpdatedAt) {
+        this.passwordUpdatedAt = passwordUpdatedAt;
     }
 }

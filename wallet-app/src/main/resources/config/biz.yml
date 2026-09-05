@@ -10,3 +10,11 @@ wallet:
     lock-minutes: 10
     ticket-ttl-seconds: 300
     bcrypt-strength: 12
+  pay-security:
+    enabled: true
+    enforce-version: -1
+    authorization-ttl-seconds: 300
+    challenge-ttl-seconds: 120
+    business-zone-id: Asia/Shanghai
+    # 生产环境必须通过配置中心覆盖；变更会使在途短信频控键失效。
+    phone-hash-pepper: ${WALLET_PAY_SECURITY_PHONE_PEPPER:change-me-before-production}

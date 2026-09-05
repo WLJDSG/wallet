@@ -25,8 +25,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * {@link RedissonConnectionFactory} 把它桥接给 Spring Data Redis，
  * RedisTemplate/StringRedisTemplate 由 Boot 自动装配且底层同样走 Redisson。</p>
  *
- * <p>Redisson 原生 API（分布式锁经 lock4j 的 RedissonLockExecutor、支付密码票据/计数用
- * RBucket/RAtomicLong）的值序列化/反序列化用 Jackson JSON codec，存储内容可读、跨语言。</p>
+ * <p>Redisson 原生 API 用于 lock4j 分布式锁；Spring Data Redis 用于支付安全票据与计数。
+ * Redisson 业务值的序列化/反序列化使用 Jackson JSON codec。</p>
  */
 @Configuration
 public class RedisConfig {

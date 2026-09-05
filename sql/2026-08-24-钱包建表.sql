@@ -106,7 +106,10 @@ CREATE TABLE IF NOT EXISTS pay_password (
   user_id       BIGINT      NOT NULL,
   password_hash VARCHAR(60) NOT NULL COMMENT 'BCrypt 强度12',
   status        VARCHAR(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
-  version       INT         NOT NULL DEFAULT 1 COMMENT '改密自增',
+  version       INT         NOT NULL DEFAULT 1 COMMENT '密码版本，改密自增',
+  security_version INT      NOT NULL DEFAULT 1 COMMENT '支付安全全局版本，凭证全撤销等操作自增',
+  password_set_at DATETIME COMMENT '首次设置时间',
+  password_updated_at DATETIME COMMENT '最近修改或重置时间',
   create_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted      TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
@@ -114,6 +117,50 @@ CREATE TABLE IF NOT EXISTS pay_password (
   update_by    VARCHAR(64)           COMMENT '更新人',
   UNIQUE KEY uk_user (user_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付密码';
+
+-- 6.1 生物支付公钥凭证（服务端不保存私钥或生物特征）
+CREATE TABLE IF NOT EXISTS pay_biometric_credential (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  credential_id VARCHAR(64) NOT NULL,
+  registration_id VARCHAR(64) NOT NULL,
+  uid BIGINT NOT NULL,
+  platform VARCHAR(16) NOT NULL COMMENT 'ANDROID/IOS',
+  password_version INT NOT NULL,
+  security_version INT NOT NULL,
+  public_key TEXT NOT NULL COMMENT 'Base64 X.509 P-256 公钥',
+  algorithm VARCHAR(32) NOT NULL DEFAULT 'EC_P256_SHA256',
+  key_attestation_status VARCHAR(16) NOT NULL DEFAULT 'UNVERIFIED',
+  app_integrity_status VARCHAR(16) NOT NULL DEFAULT 'UNVERIFIED',
+  status VARCHAR(16) NOT NULL DEFAULT 'ENABLED',
+  disabled_reason VARCHAR(32),
+  registered_at DATETIME,
+  last_used_at DATETIME,
+  disabled_at DATETIME,
+  UNIQUE KEY uk_pay_bio_credential (credential_id),
+  UNIQUE KEY uk_pay_bio_registration (registration_id),
+  KEY idx_pay_bio_uid_status (uid, status)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='生物支付公钥凭证';
+
+-- 6.2 支付安全审计（不记录密码、验证码、原始票据或私钥）
+CREATE TABLE IF NOT EXISTS pay_security_audit (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  event_type VARCHAR(64) NOT NULL,
+  uid BIGINT NOT NULL,
+  order_no VARCHAR(64),
+  credential_id VARCHAR(64),
+  client_type VARCHAR(16),
+  app_version VARCHAR(32),
+  result VARCHAR(16) NOT NULL,
+  reason_code VARCHAR(64),
+  amount DECIMAL(18,2),
+  currency VARCHAR(8),
+  ip VARCHAR(64),
+  user_agent_digest VARCHAR(64),
+  occurred_at DATETIME NOT NULL,
+  KEY idx_pay_security_uid_time (uid, occurred_at),
+  KEY idx_pay_security_order (order_no),
+  KEY idx_pay_security_credential (credential_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='支付安全审计';
 
 -- 7. 支付主单
 CREATE TABLE IF NOT EXISTS pay_order (

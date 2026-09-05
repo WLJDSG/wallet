@@ -6,7 +6,9 @@ import com.wallet.app.model.PasswordVerifyReq;
 import com.wallet.app.model.VerifyResult;
 import com.wallet.app.limit.LimitDim;
 import com.wallet.app.limit.RateLimit;
-import com.wallet.contract.account.PasswordService;
+import com.wallet.security.PaySecurityEngine;
+import com.wallet.security.model.AuthorizationResult;
+import com.wallet.security.model.UserIdentity;
 import com.wallet.common.result.ApiResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 支付密码接口：设置 / 校验签发票据。
@@ -27,13 +30,15 @@ import org.springframework.web.bind.annotation.RestController;
 @AllArgsConstructor
 public class PasswordController {
 
-    private final PasswordService passwordService;
+    private final PaySecurityEngine paySecurityEngine;
 
 
-    @Operation(summary = "设置/重置支付密码", description = "已设置过时必须携带旧密码")
+    @Operation(summary = "设置/修改/重置支付密码（兼容入口）", description = "必须携带 /api/pay/security 身份认证流程签发的一次性 identityToken")
     @PostMapping("/set")
+    @Transactional
     public ApiResult<Void> set(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId, @Valid @RequestBody PasswordSetReq req) {
-        passwordService.set(userId, req.password(), req.oldPassword());
+        paySecurityEngine.getIdentityService().updatePassword(UserIdentity.of(userId, null, true), req.purpose(),
+            req.identityToken(), req.password(), req.confirmPassword(), null);
         return ApiResult.ok();
     }
 
@@ -43,7 +48,8 @@ public class PasswordController {
     @PostMapping("/verify")
     public ApiResult<VerifyResult> verify(@Parameter(description = "用户ID", example = "1001") @RequestHeader("X-Uid") Long userId,
         @Valid @RequestBody PasswordVerifyReq req) {
-        String ticket = passwordService.verifyAndIssue(userId, req.password(), req.orderNo(), req.amount());
-        return ApiResult.ok(new VerifyResult(ticket));
+        AuthorizationResult result = paySecurityEngine.getPasswordAuthService().authorizePassword(
+            UserIdentity.of(userId, null, true), req.orderNo(), "WALLET", req.password(), null);
+        return ApiResult.ok(new VerifyResult(result.getPayAuthorizationToken()));
     }
 }

@@ -17,6 +17,10 @@
     <dependencies>
         <dependency>
             <groupId>com.wallet</groupId>
+            <artifactId>wallet-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wallet</groupId>
             <artifactId>wallet-pay</artifactId>
         </dependency>
         <!-- 组合根：实现模块的 Bean 由 app 拉全。
